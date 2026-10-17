@@ -48,6 +48,10 @@ pub struct GradeSummary {
     pub avg: f64,
     #[sqlx(default)]
     pub average: f64,
+    /// False when the class has no grades yet (distinguishes a true 0.0 average
+    /// from "no data").
+    #[sqlx(default)]
+    pub has_grades: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -93,6 +97,7 @@ pub async fn at_risk_students(pool: &PgPool) -> Result<Vec<AnalyticsRow>, AppErr
                 s.first_name || ' ' || s.last_name AS full_name,
                 s.admission_no,
                 (COALESCE((SELECT SUM(amount_cents) FROM invoices WHERE student_id = s.id), 0)
+                 + COALESCE((SELECT SUM(f.amount_cents) FROM fee_fines f JOIN invoices i ON i.id = f.invoice_id WHERE i.student_id = s.id), 0)
                  - COALESCE((SELECT SUM(p.amount_cents) FROM payments p JOIN invoices i ON i.id = p.invoice_id WHERE i.student_id = s.id), 0))::BIGINT AS fee_balance,
                 (SELECT CASE WHEN COUNT(*) > 0
                             THEN COUNT(*) FILTER (WHERE status = 'present')::FLOAT8 * 100.0 / COUNT(*)::FLOAT8
@@ -166,11 +171,18 @@ pub async fn fee_summary(pool: &PgPool) -> Result<FeeSummary, AppError> {
     )
     .fetch_one(pool)
     .await?;
+    let fines: i64 =
+        sqlx::query_scalar("SELECT COALESCE(SUM(amount_cents), 0)::BIGINT FROM fee_fines")
+            .fetch_one(pool)
+            .await?;
     let paid: i64 = sqlx::query_scalar(
         "SELECT COALESCE(SUM(amount_cents), 0)::BIGINT FROM payments",
     )
     .fetch_one(pool)
     .await?;
+    // Billed includes fines, matching the per-invoice balance definition
+    // (amount + fines − paid) used by the fees module.
+    let billed = billed + fines;
     let outstanding = billed - paid;
     Ok(FeeSummary {
         total_billed: billed,
@@ -207,6 +219,7 @@ pub async fn grade_summary(pool: &PgPool) -> Result<Vec<GradeSummary>, AppError>
                 class_name,
                 avg: v,
                 average: v,
+                has_grades: avg.is_some(),
             }
         })
         .collect())

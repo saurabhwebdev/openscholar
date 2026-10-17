@@ -397,6 +397,22 @@ pub async fn unenroll(pool: &PgPool, class_id: i64, student_id: i64) -> Result<(
 /// Delete a class. Enrollments, attendance, assessments and grades cascade
 /// via FKs. Returns the owning year id for the redirect; 404 when 0 rows.
 pub async fn delete_class(pool: &PgPool, id: i64) -> Result<i64, AppError> {
+    // Refuse to delete a class that carries academic history — the FK cascade
+    // would wipe its enrolments, a year of attendance, and all its grades.
+    let history: i64 = sqlx::query_scalar(
+        "SELECT ((SELECT COUNT(*) FROM enrollments WHERE class_id = $1)
+               + (SELECT COUNT(*) FROM attendance WHERE class_id = $1)
+               + (SELECT COUNT(*) FROM assessments WHERE class_id = $1))::BIGINT",
+    )
+    .bind(id)
+    .fetch_one(pool)
+    .await?;
+    if history > 0 {
+        return Err(AppError::BadRequest(
+            "This class has enrolment, attendance or grade records and cannot be deleted."
+                .to_string(),
+        ));
+    }
     let year: Option<i64> =
         sqlx::query_scalar("DELETE FROM classes WHERE id = $1 RETURNING school_year_id")
             .bind(id)

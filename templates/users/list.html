@@ -83,4 +83,28 @@
   </table>
   {% endif %}
 </div>
+
+<div class="card mt-6">
+  <h2 class="text-lg font-semibold mb-1">Reset a user's password</h2>
+  <p class="text-sm text-muted mb-4">Sets a new password and signs that user out of all devices.</p>
+  <form method="post" action="/users/password" class="grid gap-4 sm:grid-cols-3 items-end"
+        onsubmit="return confirm('Reset this user's password?');">
+    <div>
+      <label class="label" for="pw_user">User</label>
+      <select class="input" id="pw_user" name="user_id" required>
+        <option value="">Choose…</option>
+        {% for u in users %}
+        <option value="{{ u.id }}">{{ u.full_name }} ({{ u.email }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="label" for="pw_new">New password</label>
+      <input class="input" id="pw_new" name="password" type="password" minlength="8" required />
+    </div>
+    <div>
+      <button class="btn-primary" type="submit">Set password</button>
+    </div>
+  </form>
+</div>
 {% endblock %}

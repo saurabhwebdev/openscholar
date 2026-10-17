@@ -66,6 +66,9 @@ pub fn validate_scale(name: &str, min_score: f64, max_score: f64, grade: &str) -
     if max_score < min_score {
         return Err("Maximum score must be at least the minimum".to_string());
     }
+    if max_score > 100.0 {
+        return Err("Maximum score cannot exceed 100".to_string());
+    }
     if grade.trim().is_empty() {
         return Err("Grade is required".to_string());
     }
@@ -107,7 +110,7 @@ pub fn validate_semester_str(name: &str, start_date: &str, end_date: &str) -> Re
 pub fn grade_for_score(scales: &[GradingScaleRow], score: f64) -> Option<String> {
     scales
         .iter()
-        .filter(|s| s.min_score <= score)
+        .filter(|s| s.min_score <= score && score <= s.max_score)
         .max_by(|a, b| a.min_score.partial_cmp(&b.min_score).unwrap_or(std::cmp::Ordering::Equal))
         .map(|s| s.grade.clone())
 }
@@ -117,7 +120,7 @@ pub fn grade_points(scales: &[GradingScaleRow], score: f64) -> Option<f64> {
     let grade = grade_for_score(scales, score)?;
     scales
         .iter()
-        .filter(|s| s.grade == grade && s.min_score <= score)
+        .filter(|s| s.grade == grade && s.min_score <= score && score <= s.max_score)
         .max_by(|a, b| a.min_score.partial_cmp(&b.min_score).unwrap_or(std::cmp::Ordering::Equal))
         .and_then(|s| s.points)
 }

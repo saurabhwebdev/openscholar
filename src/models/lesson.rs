@@ -62,7 +62,7 @@ pub fn validate_lesson_title(title: &str) -> Result<(), String> {
 pub async fn list_lessons(pool: &PgPool) -> Result<Vec<LessonRow>, AppError> {
     let rows = sqlx::query_as::<_, LessonRow>(
         "SELECT id, class_id, subject_id, teacher_id, date, title, body, homework, created_at
-         FROM lessons ORDER BY date DESC, id DESC",
+         FROM lessons ORDER BY date DESC, id DESC LIMIT 500",
     )
     .fetch_all(pool)
     .await?;
@@ -72,7 +72,7 @@ pub async fn list_lessons(pool: &PgPool) -> Result<Vec<LessonRow>, AppError> {
 pub async fn list_for_class(pool: &PgPool, class_id: i64) -> Result<Vec<LessonRow>, AppError> {
     let rows = sqlx::query_as::<_, LessonRow>(
         "SELECT id, class_id, subject_id, teacher_id, date, title, body, homework, created_at
-         FROM lessons WHERE class_id = $1 ORDER BY date DESC, id DESC",
+         FROM lessons WHERE class_id = $1 ORDER BY date DESC, id DESC LIMIT 500",
     )
     .bind(class_id)
     .fetch_all(pool)
@@ -90,7 +90,7 @@ pub async fn list_for_student(pool: &PgPool, student_id: i64) -> Result<Vec<Less
          FROM lessons l
          JOIN enrollments e ON e.class_id = l.class_id
          WHERE e.student_id = $1
-         ORDER BY l.date DESC, l.id DESC",
+         ORDER BY l.date DESC, l.id DESC LIMIT 500",
     )
     .bind(student_id)
     .fetch_all(pool)

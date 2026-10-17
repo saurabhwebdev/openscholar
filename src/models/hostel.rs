@@ -270,7 +270,7 @@ pub async fn allocations_list(pool: &PgPool) -> Result<Vec<AllocationRow>, AppEr
          FROM hostel_allocations a
          JOIN hostel_rooms r ON r.id = a.room_id
          JOIN students s ON s.id = a.student_id
-         ORDER BY (a.released_on IS NULL) DESC, a.allocated_on DESC, a.id DESC",
+         ORDER BY (a.released_on IS NULL) DESC, a.allocated_on DESC, a.id DESC LIMIT 1000",
     )
     .fetch_all(pool)
     .await?;

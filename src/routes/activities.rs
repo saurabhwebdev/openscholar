@@ -179,22 +179,20 @@ async fn activity_detail(
         .await?
         .ok_or(AppError::NotFound)?;
     let members_rows = am::members_for_activity(&state.pool, id).await.unwrap_or_default();
-    // fetch student names
-    let mut members = Vec::new();
-    for m in members_rows {
-        let name: Option<String> = sqlx::query_scalar(
-            "SELECT first_name || ' ' || last_name FROM students WHERE id = $1",
-        )
-        .bind(m.student_id)
-        .fetch_optional(&state.pool)
-        .await?;
-        members.push(MemberView {
+    // Names are joined in by members_for_activity (no per-member query).
+    let members: Vec<MemberView> = members_rows
+        .into_iter()
+        .map(|m| MemberView {
             id: m.id,
             student_id: m.student_id,
-            student_name: name.unwrap_or_else(|| format!("#{}", m.student_id)),
+            student_name: if m.student_name.trim().is_empty() {
+                format!("#{}", m.student_id)
+            } else {
+                m.student_name.clone()
+            },
             joined_on: m.joined_on.to_string(),
-        });
-    }
+        })
+        .collect();
     let students_rows = list_students(&state.pool).await.unwrap_or_default();
     let students: Vec<(i64, String)> = students_rows
         .into_iter()

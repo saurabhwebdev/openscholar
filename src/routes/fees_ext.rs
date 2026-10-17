@@ -186,7 +186,7 @@ async fn apply_discount_submit(
         return Ok(flash_redirect(&target, "Provide discount or percent", "error"));
     };
     match res {
-        Ok(_) => Ok(flash_redirect(&target, "Discount applied", "ok")),
+        Ok(_) => Ok(flash_redirect(&target, "Discount applied (replaces any previous discount)", "ok")),
         Err(AppError::BadRequest(msg)) => Ok(flash_redirect(&target, &msg, "error")),
         Err(AppError::NotFound) => Ok(flash_redirect(&target, "Invoice not found", "error")),
         Err(_) => Ok(flash_redirect(&target, "Could not apply discount", "error")),

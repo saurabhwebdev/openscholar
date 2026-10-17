@@ -124,10 +124,10 @@ async fn analytics_page(
             .into_iter()
             .map(|g| GradeView {
                 class_name: g.class_name,
-                avg: if g.avg == 0.0 {
-                    "—".to_string()
-                } else {
+                avg: if g.has_grades {
                     format!("{:.1}", g.avg)
+                } else {
+                    "—".to_string()
                 },
             })
             .collect(),

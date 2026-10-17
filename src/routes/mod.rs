@@ -1,5 +1,10 @@
-use axum::{middleware, response::Redirect, routing::get, Router};
+use std::time::Duration;
+
+use axum::{extract::DefaultBodyLimit, middleware, response::Redirect, routing::get, Router};
+use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::services::ServeDir;
+use tower_http::timeout::TimeoutLayer;
+use tower_http::trace::TraceLayer;
 
 use crate::auth;
 use crate::state::AppState;
@@ -87,4 +92,17 @@ pub fn app_router(state: AppState) -> Router {
         // documents (incl. student welfare/medical) are delivered only through the
         // authenticated, role-gated `/attachments/{id}/download` handler.
         .with_state(state)
+        // Cross-cutting layers (last = outermost). CatchPanic is outermost so a
+        // panic in any inner layer/handler becomes a clean 500 instead of a
+        // dropped connection; Trace logs each request; Timeout sheds slow ones;
+        // security headers + CSRF-origin check guard every response/mutation.
+        .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
+        .layer(middleware::from_fn(auth::middleware::csrf_protect))
+        .layer(middleware::from_fn(auth::middleware::security_headers))
+        .layer(TimeoutLayer::with_status_code(
+            axum::http::StatusCode::REQUEST_TIMEOUT,
+            Duration::from_secs(30),
+        ))
+        .layer(TraceLayer::new_for_http())
+        .layer(CatchPanicLayer::new())
 }

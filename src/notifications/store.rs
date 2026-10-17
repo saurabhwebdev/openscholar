@@ -50,7 +50,7 @@ pub async fn list_for(
             sqlx::query_as::<_, NotificationRow>(
                 "SELECT id, user_id, kind, title, body, link, read_at, created_at
                  FROM notifications
-                 WHERE user_id = $1 ORDER BY created_at DESC, id DESC",
+                 WHERE user_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200",
             )
             .bind(user_id)
             .fetch_all(pool)

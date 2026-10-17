@@ -563,11 +563,18 @@ async fn delete_student(
     // Refuse a hard delete when financial/academic history exists — that data
     // would be irreversibly cascaded away. Archiving (status=inactive) is the
     // supported way to remove a student who has records.
+    // Cover the full ON DELETE CASCADE set — billing, academic AND welfare —
+    // so a hard delete can never silently erase medical/behavior/attendance
+    // history. Archiving (status=inactive) is the supported path.
     let history: i64 = sqlx::query_scalar(
         "SELECT ((SELECT COUNT(*) FROM invoices WHERE student_id = $1)
                + (SELECT COUNT(*) FROM grades WHERE student_id = $1)
                + (SELECT COUNT(*) FROM payments p JOIN invoices i ON i.id = p.invoice_id
-                  WHERE i.student_id = $1))::BIGINT",
+                  WHERE i.student_id = $1)
+               + (SELECT COUNT(*) FROM enrollments WHERE student_id = $1)
+               + (SELECT COUNT(*) FROM attendance WHERE student_id = $1)
+               + (SELECT COUNT(*) FROM medical_records WHERE student_id = $1)
+               + (SELECT COUNT(*) FROM behavior_incidents WHERE student_id = $1))::BIGINT",
     )
     .bind(id)
     .fetch_one(&state.pool)
@@ -576,7 +583,7 @@ async fn delete_student(
         return Ok(Redirect::to(&format!(
             "/students/{id}?flash={}&flash_kind=error",
             util::url_encode(
-                "This student has billing or academic records. Set their status to inactive to archive instead of deleting."
+                "This student has billing, academic, attendance or welfare records. Set their status to inactive to archive instead of deleting."
             )
         ))
         .into_response());

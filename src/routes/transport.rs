@@ -458,12 +458,9 @@ async fn my_riders(
     }
 
     let (riders, routes) = if user.has_role(&[Role::Admin, Role::Teacher, Role::Staff]) {
-        let mut all_riders: Vec<tr::RiderRow> = Vec::new();
+        // One query for every rider instead of one per route (was N+1).
         let routes = tr::list_routes(&state.pool).await?;
-        for rt in &routes {
-            let rs = tr::riders_for_route(&state.pool, rt.id).await?;
-            all_riders.extend(rs);
-        }
+        let all_riders = tr::list_riders(&state.pool).await?;
         (all_riders, routes)
     } else {
         let mut all_riders: Vec<tr::RiderRow> = Vec::new();

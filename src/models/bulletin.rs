@@ -188,11 +188,15 @@ pub async fn visible_notices(pool: &PgPool, role: &str) -> Result<Vec<NoticeRow>
     if is_staff_side_role(role) {
         return all_notices(pool).await;
     }
+    // Families only see live notices (unpublished/expired ones are hidden).
     let rows = sqlx::query_as::<_, NoticeRow>(
         "SELECT id, title, body, audience, published_at, expires_at, created_by
          FROM notices
          WHERE audience IN ('all', 'parents')
-         ORDER BY published_at DESC, id DESC",
+           AND (published_at IS NULL OR published_at <= now())
+           AND (expires_at IS NULL OR expires_at > now())
+         ORDER BY published_at DESC, id DESC
+         LIMIT 200",
     )
     .fetch_all(pool)
     .await?;
@@ -204,7 +208,8 @@ pub async fn all_notices(pool: &PgPool) -> Result<Vec<NoticeRow>, AppError> {
     let rows = sqlx::query_as::<_, NoticeRow>(
         "SELECT id, title, body, audience, published_at, expires_at, created_by
          FROM notices
-         ORDER BY published_at DESC, id DESC",
+         ORDER BY published_at DESC, id DESC
+         LIMIT 500",
     )
     .fetch_all(pool)
     .await?;

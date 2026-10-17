@@ -30,16 +30,11 @@ impl IntoResponse for AppError {
             AppError::Forbidden => (StatusCode::FORBIDDEN, "Forbidden").into_response(),
             AppError::NotFound => (StatusCode::NOT_FOUND, "Not found").into_response(),
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg).into_response(),
-            AppError::Template(msg) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, msg.to_string()).into_response()
-            }
-            AppError::Hash(_) | AppError::Db(_) | AppError::Internal(_) => {
+            AppError::Template(_) | AppError::Hash(_) | AppError::Db(_) | AppError::Internal(_) => {
+                // Log the detail server-side; never leak internals (template
+                // names, SQL, hashes) to the client.
                 tracing::error!(error = %self, "internal error");
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal server error",
-                )
-                    .into_response()
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
             }
         }
     }

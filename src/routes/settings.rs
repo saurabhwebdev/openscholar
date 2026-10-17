@@ -26,6 +26,52 @@ pub fn router() -> Router<AppState> {
         .route("/settings/semesters/{id}/set-current", post(semester_set_current))
         .route("/settings/semesters/{id}/delete", post(semester_delete))
         .route("/settings/raw", post(raw_submit))
+        .route("/settings/password", post(password_submit))
+}
+
+#[derive(Debug, Deserialize)]
+struct PasswordForm {
+    #[serde(default)]
+    current_password: String,
+    #[serde(default)]
+    new_password: String,
+}
+
+/// Any signed-in user changes their OWN password. Requires the current
+/// password, and signs out the user's other sessions on success.
+async fn password_submit(
+    State(state): State<AppState>,
+    Extension(user): Extension<CurrentUser>,
+    headers: axum::http::HeaderMap,
+    Form(form): Form<PasswordForm>,
+) -> Result<Response, AppError> {
+    let current_hash = crate::models::user::password_hash_for(&state.pool, user.id)
+        .await?
+        .ok_or(AppError::NotFound)?;
+    if crate::auth::password::verify_password(&form.current_password, &current_hash).is_err() {
+        return Ok(flash_redirect("/settings", "Current password is incorrect", "error").into_response());
+    }
+    let new_hash = match crate::auth::password::hash_password(&form.new_password) {
+        Ok(h) => h,
+        Err(_) => {
+            return Ok(flash_redirect(
+                "/settings",
+                "New password must be at least 8 characters",
+                "error",
+            )
+            .into_response())
+        }
+    };
+    crate::models::user::update_password(&state.pool, user.id, &new_hash).await?;
+    // Keep the acting session; invalidate the user's other sessions.
+    if let Some(sid) = headers
+        .get(axum::http::header::COOKIE)
+        .and_then(|v| v.to_str().ok())
+        .and_then(crate::auth::session::session_id_from_cookie_header)
+    {
+        crate::auth::session::delete_other_sessions(&state.pool, user.id, sid).await?;
+    }
+    Ok(flash_redirect("/settings", "Password changed", "ok").into_response())
 }
 
 fn today() -> String {
@@ -308,10 +354,25 @@ async fn semester_create(
     if let Err(msg) = settings_model::validate_semester(&form.name, start, end) {
         return Ok(flash_redirect("/settings", &msg, "error").into_response());
     }
+    // Semester dates must fall within the selected school year.
+    if let Ok(year) = class_model::year_row(&state.pool, year_id).await {
+        if start < year.start_date || end > year.end_date {
+            return Ok(flash_redirect(
+                "/settings",
+                "Semester dates must fall within the school year",
+                "error",
+            )
+            .into_response());
+        }
+    }
     match settings_model::create_semester(&state.pool, year_id, form.name.trim(), start, end).await {
         Ok(row) => {
             if form.is_current.as_deref() == Some("on") || form.is_current.as_deref() == Some("true") {
-                let _ = settings_model::set_current_semester(&state.pool, row.id).await;
+                // Propagate a set-current failure instead of silently swallowing it.
+                if let Err(e) = settings_model::set_current_semester(&state.pool, row.id).await {
+                    let (msg, kind) = db_flash(e);
+                    return Ok(flash_redirect("/settings", &msg, &kind).into_response());
+                }
             }
             Ok(flash_redirect("/settings", "Semester created", "ok").into_response())
         }

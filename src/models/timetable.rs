@@ -141,7 +141,7 @@ pub fn build_grid(periods: &[PeriodRow], slots: &[SlotView]) -> Vec<GridRow> {
 
 pub async fn list_subjects(pool: &PgPool) -> Result<Vec<SubjectRow>, AppError> {
     let rows = sqlx::query_as::<_, SubjectRow>(
-        "SELECT id, code, name, department FROM subjects ORDER BY code",
+        "SELECT id, code, name, department FROM subjects ORDER BY code LIMIT 500",
     )
     .fetch_all(pool)
     .await?;
@@ -361,6 +361,42 @@ pub async fn save_slot(
     teacher_id: Option<i64>,
     room: Option<&str>,
 ) -> Result<i64, AppError> {
+    // Validate referenced rows up front so a bad/stale id is a friendly error
+    // rather than a raw 500 from a foreign-key violation.
+    let class_ok: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM classes WHERE id = $1)")
+            .bind(class_id)
+            .fetch_one(pool)
+            .await?;
+    if !class_ok {
+        return Err(AppError::BadRequest("That class no longer exists".to_string()));
+    }
+    let subject_ok: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM subjects WHERE id = $1)")
+            .bind(subject_id)
+            .fetch_one(pool)
+            .await?;
+    if !subject_ok {
+        return Err(AppError::BadRequest("Unknown subject".to_string()));
+    }
+    let period_ok: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM periods WHERE id = $1)")
+            .bind(period_id)
+            .fetch_one(pool)
+            .await?;
+    if !period_ok {
+        return Err(AppError::BadRequest("Unknown period".to_string()));
+    }
+    if let Some(tid) = teacher_id {
+        let teacher_ok: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM staff WHERE id = $1)")
+                .bind(tid)
+                .fetch_one(pool)
+                .await?;
+        if !teacher_ok {
+            return Err(AppError::BadRequest("Unknown teacher".to_string()));
+        }
+    }
     if let Some(tid) = teacher_id {
         if teacher_clash(pool, tid, period_id, None).await? {
             let name: Option<String> = sqlx::query_scalar(

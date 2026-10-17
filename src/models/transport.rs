@@ -288,7 +288,7 @@ pub async fn list_routes(pool: &PgPool) -> Result<Vec<RouteRow>, AppError> {
                 v.capacity AS vehicle_capacity,
                 (SELECT COUNT(*)::BIGINT FROM transport_riders r WHERE r.route_id = tr.id) AS riders_count
          FROM transport_routes tr LEFT JOIN vehicles v ON v.id = tr.vehicle_id
-         ORDER BY tr.name ASC, tr.id ASC",
+         ORDER BY tr.name ASC, tr.id ASC LIMIT 500",
     )
     .fetch_all(pool)
     .await?;
@@ -370,6 +370,17 @@ pub async fn update_route(pool: &PgPool, id: i64, input: &RouteInput) -> Result<
 }
 
 pub async fn delete_route(pool: &PgPool, id: i64) -> Result<(), AppError> {
+    // Don't cascade away the record of who rode this route.
+    let riders: i64 =
+        sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM transport_riders WHERE route_id = $1")
+            .bind(id)
+            .fetch_one(pool)
+            .await?;
+    if riders > 0 {
+        return Err(AppError::BadRequest(
+            "This route has riders assigned; remove them before deleting it.".to_string(),
+        ));
+    }
     let res = sqlx::query("DELETE FROM transport_routes WHERE id = $1")
         .bind(id)
         .execute(pool)
@@ -402,7 +413,7 @@ pub async fn list_stops(pool: &PgPool, route_id: i64) -> Result<Vec<StopRow>, Ap
 pub async fn all_stops(pool: &PgPool) -> Result<Vec<StopRow>, AppError> {
     let rows = sqlx::query_as::<_, StopRow>(
         "SELECT id, route_id, name, sequence, created_at
-         FROM transport_stops ORDER BY route_id, sequence, id",
+         FROM transport_stops ORDER BY route_id, sequence, id LIMIT 1000",
     )
     .fetch_all(pool)
     .await?;
@@ -498,7 +509,13 @@ pub async fn stops_for_route(pool: &PgPool, route_id: i64) -> Result<Vec<StopRow
 
 pub async fn list_riders(pool: &PgPool) -> Result<Vec<RiderRow>, AppError> {
     let rows = sqlx::query_as::<_, RiderRow>(
-        "SELECT id, student_id, route_id, stop_id, created_at FROM transport_riders ORDER BY id",
+        "SELECT tr.id, tr.student_id, tr.route_id, tr.stop_id, tr.created_at,
+                (s.first_name || ' ' || s.last_name) AS student_name,
+                st.name AS stop_name
+         FROM transport_riders tr
+         JOIN students s ON s.id = tr.student_id
+         LEFT JOIN transport_stops st ON st.id = tr.stop_id
+         ORDER BY s.last_name, s.first_name LIMIT 1000",
     )
     .fetch_all(pool)
     .await?;

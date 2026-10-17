@@ -65,7 +65,21 @@ pub fn weighted_percent(items: &[(f64, f64, f64)]) -> Option<f64> {
         den += weight;
     }
     if den == 0.0 {
-        None
+        // All graded work is zero-weight: fall back to an unweighted mean so a
+        // grade still shows (matches the grades-page class_overview behaviour).
+        let mut cnt = 0.0;
+        let mut sum = 0.0;
+        for (score, max, _w) in items {
+            if *max != 0.0 {
+                sum += score / max;
+                cnt += 1.0;
+            }
+        }
+        if cnt == 0.0 {
+            None
+        } else {
+            Some(100.0 * sum / cnt)
+        }
     } else {
         Some(100.0 * num / den)
     }
@@ -256,9 +270,14 @@ async fn overall_for_class(
     class_id: i64,
 ) -> Result<OverallRow, AppError> {
     let row = sqlx::query_as::<_, OverallRow>(
-        "SELECT (100 * SUM(g.score::FLOAT8 / NULLIF(a.max_score::FLOAT8, 0) * a.weight::FLOAT8)
-                 / NULLIF(SUM(CASE WHEN g.score IS NOT NULL THEN a.weight::FLOAT8 ELSE 0 END), 0)
-                )::FLOAT8 AS percent,
+        "SELECT (CASE
+                    WHEN SUM(CASE WHEN g.score IS NOT NULL THEN a.weight::FLOAT8 ELSE 0 END) > 0
+                        THEN 100 * SUM(g.score::FLOAT8 / NULLIF(a.max_score::FLOAT8, 0) * a.weight::FLOAT8)
+                             / SUM(CASE WHEN g.score IS NOT NULL THEN a.weight::FLOAT8 ELSE 0 END)
+                    WHEN COUNT(g.score) > 0
+                        THEN 100 * AVG(g.score::FLOAT8 / NULLIF(a.max_score::FLOAT8, 0))
+                    ELSE NULL
+                 END)::FLOAT8 AS percent,
                 COUNT(g.score)::BIGINT AS graded
           FROM assessments a
           LEFT JOIN grades g ON g.assessment_id = a.id AND g.student_id = $1
@@ -395,6 +414,7 @@ struct ReceiptTemplate {
     reference: String,
     paid_at: String,
     invoice_amount: String,
+    invoice_fines: String,
     invoice_paid: String,
     balance_after: String,
     printed_on: String,
@@ -422,7 +442,11 @@ async fn receipt(
             .await?;
 
     let (invoice, _) = crate::models::fees::invoice_detail(&state.pool, payment.invoice_id).await?;
-    check_scope(&user, invoice.student_id, &state.pool).await?;
+    // Don't leak payment-id existence to families: a scope failure looks the
+    // same as "no such payment" for non-staff.
+    if let Err(e) = check_scope(&user, invoice.student_id, &state.pool).await {
+        return Err(if is_staff(&user) { e } else { AppError::NotFound });
+    }
 
     let back_url = if is_staff(&user) {
         format!("/fees/{}", invoice.id)
@@ -440,6 +464,7 @@ async fn receipt(
         reference: payment.reference.clone().unwrap_or_default(),
         paid_at: payment.paid_at.format("%Y-%m-%d %H:%M").to_string(),
         invoice_amount: util::format_cents(invoice.amount_cents),
+        invoice_fines: util::format_cents(invoice.fines),
         invoice_paid: util::format_cents(invoice.paid),
         balance_after: util::format_cents(invoice.balance),
         printed_on: printed_on(),
@@ -655,8 +680,15 @@ mod tests {
 
     #[test]
     fn weighted_percent_none_when_no_graded_work() {
+        // No graded items at all → None.
         assert_eq!(weighted_percent(&[]), None);
-        assert_eq!(weighted_percent(&[(80.0, 100.0, 0.0)]), None);
+        // All graded work is zero-weight → fall back to the unweighted mean
+        // (mirrors the grades-page class_overview behaviour), not None.
+        assert!((weighted_percent(&[(80.0, 100.0, 0.0)]).unwrap() - 80.0).abs() < 1e-9);
+        assert!(
+            (weighted_percent(&[(80.0, 100.0, 0.0), (90.0, 100.0, 0.0)]).unwrap() - 85.0).abs()
+                < 1e-9
+        );
     }
 
     #[test]

@@ -89,7 +89,7 @@ pub fn validate_fine(amount_cents: i64, reason: &str) -> Result<(), String> {
 
 pub async fn list_categories(pool: &PgPool) -> Result<Vec<CategoryRow>, AppError> {
     let rows = sqlx::query_as::<_, CategoryRow>(
-        "SELECT id, name, description, created_at FROM fee_categories ORDER BY name ASC, id ASC",
+        "SELECT id, name, description, created_at FROM fee_categories ORDER BY name ASC, id ASC LIMIT 500",
     )
     .fetch_all(pool)
     .await?;
@@ -172,7 +172,7 @@ pub async fn delete_category(pool: &PgPool, id: i64) -> Result<bool, AppError> {
 pub async fn list_discounts(pool: &PgPool) -> Result<Vec<DiscountRow>, AppError> {
     let rows = sqlx::query_as::<_, DiscountRow>(
         "SELECT id, name, percent::FLOAT8 AS percent, student_id, category_id, created_at
-         FROM fee_discounts ORDER BY id ASC",
+         FROM fee_discounts ORDER BY id ASC LIMIT 500",
     )
     .fetch_all(pool)
     .await?;
@@ -427,13 +427,35 @@ pub async fn apply_discount_by_id(
     invoice_id: i64,
     discount_id: i64,
 ) -> Result<(), AppError> {
-    let percent: Option<f64> = sqlx::query_scalar(
-        "SELECT percent::FLOAT8 FROM fee_discounts WHERE id = $1",
+    let discount: Option<(f64, Option<i64>, Option<i64>)> = sqlx::query_as(
+        "SELECT percent::FLOAT8, student_id, category_id FROM fee_discounts WHERE id = $1",
     )
     .bind(discount_id)
     .fetch_optional(pool)
     .await?;
-    let percent = percent.ok_or(AppError::NotFound)?;
+    let (percent, d_student, d_category) = discount.ok_or(AppError::NotFound)?;
+    // Enforce the discount's scope: a discount tied to a specific student or fee
+    // category must only apply to a matching invoice.
+    let inv: Option<(i64, Option<i64>)> =
+        sqlx::query_as("SELECT student_id, category_id FROM invoices WHERE id = $1")
+            .bind(invoice_id)
+            .fetch_optional(pool)
+            .await?;
+    let (inv_student, inv_category) = inv.ok_or(AppError::NotFound)?;
+    if let Some(ds) = d_student {
+        if ds != inv_student {
+            return Err(AppError::BadRequest(
+                "This discount is for a different student".to_string(),
+            ));
+        }
+    }
+    if let Some(dc) = d_category {
+        if Some(dc) != inv_category {
+            return Err(AppError::BadRequest(
+                "This discount is for a different fee category".to_string(),
+            ));
+        }
+    }
     apply_discount_to_invoice_percent(pool, invoice_id, percent).await
 }
 

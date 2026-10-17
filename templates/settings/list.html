@@ -211,4 +211,22 @@
     </div>
   </form>
 </div>
+
+<div class="card mt-6">
+  <h2 class="text-lg font-semibold mb-1">Change my password</h2>
+  <p class="text-sm text-muted mb-4">You'll stay signed in here; other devices will be signed out.</p>
+  <form method="post" action="/settings/password" class="grid gap-4 sm:grid-cols-3 items-end">
+    <div>
+      <label class="label" for="cur_pw">Current password</label>
+      <input class="input" id="cur_pw" name="current_password" type="password" required />
+    </div>
+    <div>
+      <label class="label" for="new_pw">New password</label>
+      <input class="input" id="new_pw" name="new_password" type="password" minlength="8" required />
+    </div>
+    <div>
+      <button class="btn-primary" type="submit">Change password</button>
+    </div>
+  </form>
+</div>
 {% endblock %}

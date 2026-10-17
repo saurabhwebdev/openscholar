@@ -88,6 +88,25 @@ impl CurrentUser {
     }
 }
 
+/// Current password hash for a user (for the self-change "old password" check).
+pub async fn password_hash_for(pool: &PgPool, user_id: i64) -> Result<Option<String>, AppError> {
+    let hash: Option<String> = sqlx::query_scalar("SELECT password_hash FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await?;
+    Ok(hash)
+}
+
+/// Set a user's password hash. Returns false if the user id is unknown.
+pub async fn update_password(pool: &PgPool, user_id: i64, hash: &str) -> Result<bool, AppError> {
+    let r = sqlx::query("UPDATE users SET password_hash = $2 WHERE id = $1")
+        .bind(user_id)
+        .bind(hash)
+        .execute(pool)
+        .await?;
+    Ok(r.rows_affected() > 0)
+}
+
 pub async fn find_user_by_email(pool: &PgPool, email: &str) -> Result<Option<UserRow>, AppError> {
     let row = sqlx::query_as::<_, UserRow>(
         "SELECT id, email, password_hash, role, full_name, active

@@ -108,6 +108,79 @@ pub fn require_roles(user: &CurrentUser, allowed: &[Role]) -> Result<(), AppErro
     }
 }
 
+/// Content-Security-Policy. `'unsafe-inline'` is required because the app ships
+/// inline `<script>`/`style=` (no nonce infrastructure); Askama auto-escaping is
+/// the XSS defense. Still enforces clickjacking (frame-ancestors), base-uri and
+/// object/form-action restrictions, and allows only self + Google Fonts.
+const CSP: &str = "default-src 'self'; \
+script-src 'self' 'unsafe-inline'; \
+style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
+font-src 'self' https://fonts.gstatic.com; \
+img-src 'self' data:; \
+connect-src 'self'; \
+frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'";
+
+/// Attach security headers to every response (clickjacking, MIME-sniffing,
+/// referrer, transport security). HSTS is ignored by browsers over plain HTTP,
+/// so sending it unconditionally is safe.
+pub async fn security_headers(req: Request, next: Next) -> Response {
+    use axum::http::HeaderValue;
+    let mut resp = next.run(req).await;
+    let h = resp.headers_mut();
+    h.insert("content-security-policy", HeaderValue::from_static(CSP));
+    h.insert("x-content-type-options", HeaderValue::from_static("nosniff"));
+    h.insert("x-frame-options", HeaderValue::from_static("DENY"));
+    h.insert(
+        "referrer-policy",
+        HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    h.insert(
+        "strict-transport-security",
+        HeaderValue::from_static("max-age=63072000; includeSubDomains"),
+    );
+    resp
+}
+
+/// Extract `host[:port]` from an Origin/Referer URL value.
+fn url_host(value: &str) -> Option<&str> {
+    let after_scheme = value.split("://").nth(1)?;
+    Some(after_scheme.split(['/', '?', '#']).next().unwrap_or(after_scheme))
+}
+
+/// CSRF defense via Origin/Referer validation: for unsafe methods, if the
+/// browser sent an Origin (or Referer), its host must match the request Host.
+/// Requests with neither header (non-browser API/CLI clients) are allowed — a
+/// browser always sends Origin on a cross-site POST, so this blocks CSRF without
+/// per-form tokens or breaking no-JS form submits.
+pub async fn csrf_protect(req: Request, next: Next) -> Response {
+    use axum::http::Method;
+    let unsafe_method = matches!(
+        *req.method(),
+        Method::POST | Method::PUT | Method::PATCH | Method::DELETE
+    );
+    if !unsafe_method {
+        return next.run(req).await;
+    }
+    let headers = req.headers();
+    let host = headers
+        .get(axum::http::header::HOST)
+        .and_then(|v| v.to_str().ok());
+    let source = headers
+        .get(axum::http::header::ORIGIN)
+        .or_else(|| headers.get(axum::http::header::REFERER))
+        .and_then(|v| v.to_str().ok());
+    match (host, source) {
+        // No Origin/Referer at all → non-browser client (API/curl); allow.
+        (_, None) => next.run(req).await,
+        (Some(host), Some(src)) if url_host(src) == Some(host) => next.run(req).await,
+        _ => (
+            axum::http::StatusCode::FORBIDDEN,
+            "Cross-origin request blocked",
+        )
+            .into_response(),
+    }
+}
+
 /// Layer gate for staff-side routes: parents/students are sent to their
 /// portal instead of hitting staff pages directly. Runs after `require_auth`.
 pub async fn require_staff_side(

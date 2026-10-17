@@ -18,6 +18,9 @@ pub struct MemberRow {
     pub activity_id: i64,
     pub student_id: i64,
     pub joined_on: chrono::NaiveDate,
+    /// Joined-in student name (empty on INSERT RETURNING rows).
+    #[sqlx(default)]
+    pub student_name: String,
 }
 
 #[derive(Debug, Clone)]
@@ -136,6 +139,17 @@ pub async fn update_activity(pool: &PgPool, id: i64, input: &ActivityInput) -> R
 }
 
 pub async fn delete_activity(pool: &PgPool, id: i64) -> Result<(), AppError> {
+    // Don't cascade away the membership roster.
+    let members: i64 =
+        sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM activity_members WHERE activity_id = $1")
+            .bind(id)
+            .fetch_one(pool)
+            .await?;
+    if members > 0 {
+        return Err(AppError::BadRequest(
+            "This activity has members; remove them before deleting it.".to_string(),
+        ));
+    }
     let res = sqlx::query("DELETE FROM activities WHERE id = $1")
         .bind(id)
         .execute(pool)
@@ -156,8 +170,10 @@ pub async fn remove_activity(pool: &PgPool, id: i64) -> Result<(), AppError> {
 
 pub async fn members_for_activity(pool: &PgPool, activity_id: i64) -> Result<Vec<MemberRow>, AppError> {
     let rows = sqlx::query_as::<_, MemberRow>(
-        "SELECT id, activity_id, student_id, joined_on
-         FROM activity_members WHERE activity_id = $1 ORDER BY joined_on, id",
+        "SELECT m.id, m.activity_id, m.student_id, m.joined_on,
+                (s.first_name || ' ' || s.last_name) AS student_name
+         FROM activity_members m JOIN students s ON s.id = m.student_id
+         WHERE m.activity_id = $1 ORDER BY m.joined_on, m.id",
     )
     .bind(activity_id)
     .fetch_all(pool)

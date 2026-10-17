@@ -661,7 +661,7 @@ pub async fn get_leave(pool: &PgPool, id: i64) -> Result<Option<LeaveRequestRow>
 pub async fn list_leaves(pool: &PgPool) -> Result<Vec<LeaveRequestRow>, AppError> {
     let rows = sqlx::query_as::<_, LeaveRequestRow>(
         "SELECT id, staff_id, leave_type, start_date, end_date, reason, status, approved_by, created_at \
-         FROM leave_requests ORDER BY created_at DESC, id DESC",
+         FROM leave_requests ORDER BY created_at DESC, id DESC LIMIT 500",
     )
     .fetch_all(pool)
     .await?;
@@ -903,7 +903,7 @@ pub async fn get_payroll(pool: &PgPool, id: i64) -> Result<Option<PayrollRow>, A
 pub async fn list_payroll(pool: &PgPool) -> Result<Vec<PayrollRow>, AppError> {
     let rows = sqlx::query_as::<_, PayrollRow>(
         "SELECT id, staff_id, period_label, base_cents, allowance_cents, deduction_cents, net_cents, paid_on, created_at \
-         FROM payroll_runs ORDER BY created_at DESC, id DESC",
+         FROM payroll_runs ORDER BY created_at DESC, id DESC LIMIT 500",
     )
     .fetch_all(pool)
     .await?;

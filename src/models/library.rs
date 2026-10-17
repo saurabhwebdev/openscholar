@@ -199,16 +199,16 @@ pub async fn update_book(pool: &PgPool, id: i64, input: &BookInput) -> Result<Bo
 }
 
 pub async fn delete_book(pool: &PgPool, id: i64) -> Result<(), AppError> {
-    // blocked if open loans
-    let open: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*)::BIGINT FROM book_loans WHERE book_id = $1 AND returned_on IS NULL",
-    )
-    .bind(id)
-    .fetch_one(pool)
-    .await?;
-    if open > 0 {
+    // Block deletion while any loan history exists (open or returned) so the
+    // lending record isn't cascaded away.
+    let loans: i64 =
+        sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM book_loans WHERE book_id = $1")
+            .bind(id)
+            .fetch_one(pool)
+            .await?;
+    if loans > 0 {
         return Err(AppError::BadRequest(
-            "Cannot delete book with open loans".to_string(),
+            "This book has loan history and cannot be deleted.".to_string(),
         ));
     }
     let res = sqlx::query("DELETE FROM books WHERE id = $1")

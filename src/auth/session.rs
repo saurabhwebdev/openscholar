@@ -60,6 +60,26 @@ pub async fn delete_session(pool: &PgPool, id: Uuid) -> Result<(), AppError> {
     Ok(())
 }
 
+/// Invalidate every session for a user except `keep` (used on self password
+/// change so the acting session stays logged in but other devices are kicked).
+pub async fn delete_other_sessions(pool: &PgPool, user_id: i64, keep: Uuid) -> Result<(), AppError> {
+    sqlx::query("DELETE FROM sessions WHERE user_id = $1 AND id <> $2")
+        .bind(user_id)
+        .bind(keep)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+/// Invalidate all of a user's sessions (used on admin password reset).
+pub async fn delete_all_sessions_for(pool: &PgPool, user_id: i64) -> Result<(), AppError> {
+    sqlx::query("DELETE FROM sessions WHERE user_id = $1")
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

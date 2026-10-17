@@ -149,9 +149,9 @@ pub async fn search_students(pool: &PgPool, q: &str) -> Result<Vec<StudentRow>, 
         "SELECT ",
         "id, admission_no, first_name, last_name, date_of_birth, gender, guardian_name, guardian_phone, guardian_email, address, status, enrolled_on, created_at",
         " FROM students",
-        " WHERE first_name ILIKE '%' || $1 || '%'",
-        "    OR last_name ILIKE '%' || $1 || '%'",
-        "    OR admission_no ILIKE '%' || $1 || '%'",
+        // Single concatenated predicate matching the students_name_trgm GIN
+        // index so substring search is index-assisted instead of a seq scan.
+        " WHERE lower(first_name || ' ' || last_name || ' ' || admission_no) LIKE '%' || lower($1) || '%'",
         " ORDER BY last_name, first_name LIMIT 200"
     ))
     .bind(q.trim())

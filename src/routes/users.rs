@@ -21,6 +21,37 @@ pub fn router() -> Router<AppState> {
         .route("/users", get(users_list).post(users_create))
         .route("/users/{id}/toggle-active", post(users_toggle_active))
         .route("/users/{id}/delete", post(users_delete))
+        .route("/users/password", post(users_set_password))
+}
+
+#[derive(Debug, Deserialize)]
+struct SetPasswordForm {
+    #[serde(default)]
+    user_id: i64,
+    #[serde(default)]
+    password: String,
+}
+
+/// Admin resets any user's password and signs that user out everywhere.
+async fn users_set_password(
+    State(state): State<AppState>,
+    Extension(user): Extension<CurrentUser>,
+    Form(form): Form<SetPasswordForm>,
+) -> Result<Response, AppError> {
+    require_roles(&user, &[Role::Admin])?;
+    if form.user_id <= 0 {
+        return Ok(fail_redirect("Choose a user"));
+    }
+    let hash = match password::hash_password(&form.password) {
+        Ok(h) => h,
+        Err(_) => return Ok(fail_redirect("Password must be at least 8 characters")),
+    };
+    if !crate::models::user::update_password(&state.pool, form.user_id, &hash).await? {
+        return Err(AppError::NotFound);
+    }
+    // Force re-login on the target's other devices.
+    crate::auth::session::delete_all_sessions_for(&state.pool, form.user_id).await?;
+    Ok(ok_redirect("Password updated; that user must sign in again"))
 }
 
 fn today() -> String {
@@ -93,6 +124,24 @@ pub fn validate_new_user(email: &str, full_name: &str, role_raw: &str) -> Result
 /// True when an admin targets their own row (toggle/delete must refuse this).
 pub fn is_self(current_id: i64, target_id: i64) -> bool {
     current_id == target_id
+}
+
+/// True when removing/deactivating `target_id` would leave zero active admins.
+async fn would_remove_last_admin(pool: &sqlx::PgPool, target_id: i64) -> Result<bool, AppError> {
+    let others: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*)::BIGINT FROM users WHERE role = 'admin' AND active = TRUE AND id <> $1",
+    )
+    .bind(target_id)
+    .fetch_one(pool)
+    .await?;
+    // The target is only a concern if it is itself an active admin.
+    let target_is_active_admin: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1 AND role = 'admin' AND active = TRUE)",
+    )
+    .bind(target_id)
+    .fetch_one(pool)
+    .await?;
+    Ok(target_is_active_admin && others == 0)
 }
 
 #[derive(Debug, sqlx::FromRow)]
@@ -211,6 +260,9 @@ async fn users_toggle_active(
     if is_self(user.id, id) {
         return Ok(fail_redirect("You cannot deactivate your own account"));
     }
+    if would_remove_last_admin(&state.pool, id).await? {
+        return Ok(fail_redirect("Cannot deactivate the last active administrator"));
+    }
     let done = sqlx::query("UPDATE users SET active = NOT active WHERE id = $1")
         .bind(id)
         .execute(&state.pool)
@@ -231,6 +283,9 @@ async fn users_delete(
     require_roles(&user, &[Role::Admin])?;
     if is_self(user.id, id) {
         return Ok(fail_redirect("You cannot delete your own account"));
+    }
+    if would_remove_last_admin(&state.pool, id).await? {
+        return Ok(fail_redirect("Cannot delete the last active administrator"));
     }
     // Sessions for the deleted user cascade via the sessions.user_id FK.
     let done = sqlx::query("DELETE FROM users WHERE id = $1")

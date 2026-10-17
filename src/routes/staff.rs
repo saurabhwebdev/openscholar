@@ -468,9 +468,12 @@ async fn staff_delete(
 ) -> Result<Response, AppError> {
     // Admin-only: deleting staff cascades (and destroys) their payroll and HR history.
     require_roles(&user, &[Role::Admin])?;
-    // Refuse a hard delete when payroll history exists (it would be cascaded away).
+    // Refuse a hard delete when payroll, attendance or leave history exists —
+    // all cascade on staff delete and would be silently destroyed.
     let history: i64 = sqlx::query_scalar(
-        "SELECT (SELECT COUNT(*) FROM payroll_runs WHERE staff_id = $1)::BIGINT",
+        "SELECT ((SELECT COUNT(*) FROM payroll_runs WHERE staff_id = $1)
+               + (SELECT COUNT(*) FROM staff_attendance WHERE staff_id = $1)
+               + (SELECT COUNT(*) FROM leave_requests WHERE staff_id = $1))::BIGINT",
     )
     .bind(id)
     .fetch_one(&state.pool)
@@ -479,7 +482,7 @@ async fn staff_delete(
         return Ok(Redirect::to(&format!(
             "/staff/{id}?flash={}&flash_kind=error",
             util::url_encode(
-                "This staff member has payroll records. Set their status to inactive to archive instead of deleting."
+                "This staff member has payroll, attendance or leave records. Set their status to inactive to archive instead of deleting."
             )
         ))
         .into_response());

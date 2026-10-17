@@ -8,6 +8,8 @@ pub struct Config {
     /// Whether session cookies carry the `Secure` flag (HTTPS-only). Defaults to
     /// true; set `COOKIE_SECURE=false` only for local plain-HTTP development.
     pub cookie_secure: bool,
+    /// Max database connections in the pool (`DATABASE_MAX_CONNECTIONS`, default 10).
+    pub db_max_connections: u32,
 }
 
 impl Config {
@@ -28,6 +30,10 @@ impl Config {
             cookie_secure: get("COOKIE_SECURE")
                 .map(|v| !matches!(v.trim().to_ascii_lowercase().as_str(), "0" | "false" | "no"))
                 .unwrap_or(true),
+            db_max_connections: get("DATABASE_MAX_CONNECTIONS")
+                .and_then(|v| v.trim().parse::<u32>().ok())
+                .filter(|n| *n > 0)
+                .unwrap_or(10),
         }
     }
 }
