@@ -273,3 +273,28 @@ td.tt-today { background: color-mix(in oklch, var(--accent) 7%, transparent); }
       var(--bg);
   }
 }
+
+/* ---- Sidebar: sticky full-height, independently scrollable, hidden scrollbar,
+       sign-out pinned to the bottom (desktop only). On mobile the sidebar is a
+       horizontal top nav and keeps its default behaviour. ---- */
+@media (min-width: 1024px) {
+  .app-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;         /* full viewport, does not scroll with the page */
+    overflow: hidden;      /* only the nav region scrolls */
+  }
+  .app-sidebar-nav {
+    flex: 1 1 auto;
+    min-height: 0;         /* allow the flex child to shrink so it can scroll */
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;        /* Firefox: invisible scrollbar */
+    -ms-overflow-style: none;     /* legacy Edge/IE */
+  }
+  .app-sidebar-nav::-webkit-scrollbar { /* WebKit/Blink: invisible scrollbar */
+    width: 0;
+    height: 0;
+    display: none;
+  }
+}

@@ -285,13 +285,16 @@ async fn delete_class_submit(
 ) -> Result<impl IntoResponse, AppError> {
     // Admin-only: deleting a class cascades its enrollments and grades.
     crate::auth::middleware::require_roles(&user, &[Role::Admin])?;
-    // `?` propagates NotFound as a real 404 when 0 rows are deleted.
-    let year_id = class_model::delete_class(&state.pool, id).await?;
-    Ok(flash_redirect(
-        &format!("/classes?year={year_id}"),
-        "Class deleted",
-        "ok",
-    ))
+    // NotFound still propagates as a real 404; the history guard becomes a flash.
+    match class_model::delete_class(&state.pool, id).await {
+        Ok(year_id) => Ok(flash_redirect(
+            &format!("/classes?year={year_id}"),
+            "Class deleted",
+            "ok",
+        )),
+        Err(AppError::BadRequest(msg)) => Ok(flash_redirect(&format!("/classes/{id}"), &msg, "error")),
+        Err(e) => Err(e),
+    }
 }
 
 async fn delete_year_submit(

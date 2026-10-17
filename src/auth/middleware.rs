@@ -161,23 +161,70 @@ pub async fn csrf_protect(req: Request, next: Next) -> Response {
     if !unsafe_method {
         return next.run(req).await;
     }
-    let headers = req.headers();
-    let host = headers
-        .get(axum::http::header::HOST)
-        .and_then(|v| v.to_str().ok());
-    let source = headers
-        .get(axum::http::header::ORIGIN)
-        .or_else(|| headers.get(axum::http::header::REFERER))
-        .and_then(|v| v.to_str().ok());
-    match (host, source) {
-        // No Origin/Referer at all → non-browser client (API/curl); allow.
-        (_, None) => next.run(req).await,
-        (Some(host), Some(src)) if url_host(src) == Some(host) => next.run(req).await,
-        _ => (
+    let forbidden = || {
+        (
             axum::http::StatusCode::FORBIDDEN,
             "Cross-origin request blocked",
         )
-            .into_response(),
+            .into_response()
+    };
+    let headers = req.headers();
+    let host = headers
+        .get(axum::http::header::HOST)
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_string);
+    let source = headers
+        .get(axum::http::header::ORIGIN)
+        .or_else(|| headers.get(axum::http::header::REFERER))
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_string);
+
+    // Primary defense: Origin/Referer must match the request Host.
+    if let Some(src) = source {
+        return match host.as_deref() {
+            Some(h) if url_host(&src) == Some(h) => next.run(req).await,
+            _ => forbidden(),
+        };
+    }
+
+    // No Origin/Referer (API/CLI clients, or a browser that stripped it).
+    // Defense-in-depth: if the browser has a CSRF cookie, require the matching
+    // double-submit token (header or `_csrf` form field). Clients without the
+    // cookie (bearer API) are allowed.
+    let cookie_hdr = headers
+        .get(axum::http::header::COOKIE)
+        .and_then(|v| v.to_str().ok());
+    let expected = match cookie_hdr.and_then(|h| crate::auth::session::cookie_value(h, crate::auth::session::CSRF_COOKIE)) {
+        Some(t) if !t.is_empty() => t.to_string(),
+        _ => return next.run(req).await,
+    };
+    // Header token first (htmx/AJAX) — no body buffering needed.
+    if let Some(h) = headers.get("x-csrf-token").and_then(|v| v.to_str().ok()) {
+        return if constant_time_eq(h.trim().as_bytes(), expected.as_bytes()) {
+            next.run(req).await
+        } else {
+            forbidden()
+        };
+    }
+    // Otherwise read the `_csrf` form field, buffering + restoring the body.
+    let (parts, body) = req.into_parts();
+    let bytes = match axum::body::to_bytes(body, 2 * 1024 * 1024).await {
+        Ok(b) => b,
+        Err(_) => return forbidden(),
+    };
+    let token_ok = std::str::from_utf8(&bytes)
+        .ok()
+        .and_then(|s| {
+            s.split('&')
+                .find_map(|p| p.split_once('=').filter(|(k, _)| *k == "_csrf").map(|(_, v)| v))
+        })
+        .map(|t| constant_time_eq(t.trim().as_bytes(), expected.as_bytes()))
+        .unwrap_or(false);
+    let req = Request::from_parts(parts, axum::body::Body::from(bytes));
+    if token_ok {
+        next.run(req).await
+    } else {
+        forbidden()
     }
 }
 

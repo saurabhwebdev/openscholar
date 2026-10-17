@@ -30,6 +30,41 @@ pub fn clear_cookie_header(secure: bool) -> String {
     )
 }
 
+pub const CSRF_COOKIE: &str = "csrf_token";
+
+pub fn new_csrf_token() -> String {
+    Uuid::new_v4().simple().to_string()
+}
+
+/// Double-submit CSRF cookie. NOT HttpOnly on purpose: the page script reads it
+/// to echo the token into form submissions. SameSite=Lax + the value secrecy
+/// (an attacker site can't read it cross-origin) are what make it a CSRF token.
+pub fn csrf_cookie_header(token: &str, secure: bool) -> String {
+    format!(
+        "{CSRF_COOKIE}={token}; Path=/; SameSite=Lax; Max-Age={}{}",
+        SESSION_TTL_DAYS * 24 * 3600,
+        if secure { "; Secure" } else { "" }
+    )
+}
+
+pub fn clear_csrf_cookie_header(secure: bool) -> String {
+    format!(
+        "{CSRF_COOKIE}=deleted; Path=/; SameSite=Lax; Max-Age=0{}",
+        if secure { "; Secure" } else { "" }
+    )
+}
+
+/// Read a named cookie's value from a Cookie header string.
+pub fn cookie_value<'a>(header: &'a str, name: &str) -> Option<&'a str> {
+    for pair in header.split(';') {
+        let (k, v) = pair.split_once('=')?;
+        if k.trim() == name {
+            return Some(v.trim());
+        }
+    }
+    None
+}
+
 pub fn session_id_from_cookie_header(header: &str) -> Option<Uuid> {
     for pair in header.split(';') {
         let (name, value) = pair.split_once('=')?;

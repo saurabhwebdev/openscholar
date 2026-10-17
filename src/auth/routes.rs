@@ -179,6 +179,15 @@ async fn login_submit(
         HeaderValue::from_str(&session::set_cookie_header(session_id, state.config.cookie_secure))
             .map_err(|e| AppError::Internal(e.to_string()))?,
     );
+    // Double-submit CSRF token cookie (read by the page script into forms).
+    headers.append(
+        SET_COOKIE,
+        HeaderValue::from_str(&session::csrf_cookie_header(
+            &session::new_csrf_token(),
+            state.config.cookie_secure,
+        ))
+        .map_err(|e| AppError::Internal(e.to_string()))?,
+    );
     Ok((headers, Redirect::to(&target)).into_response())
 }
 
@@ -197,6 +206,11 @@ async fn logout(
     out.insert(
         SET_COOKIE,
         HeaderValue::from_str(&session::clear_cookie_header(state.config.cookie_secure))
+            .map_err(|e| AppError::Internal(e.to_string()))?,
+    );
+    out.append(
+        SET_COOKIE,
+        HeaderValue::from_str(&session::clear_csrf_cookie_header(state.config.cookie_secure))
             .map_err(|e| AppError::Internal(e.to_string()))?,
     );
     Ok((out, Redirect::to("/login")).into_response())

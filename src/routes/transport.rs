@@ -213,6 +213,7 @@ async fn delete_route(
     require_roles(&user, &[Role::Admin, Role::Staff])?;
     match tr::delete_route(&state.pool, id).await {
         Ok(_) => Ok(Redirect::to("/transport?flash=Route+deleted&flash_kind=ok").into_response()),
+        Err(AppError::BadRequest(msg)) => Ok(back_to("/transport", &msg).into_response()),
         Err(e) => Err(e),
     }
 }

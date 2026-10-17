@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/tailwind.css?v=3">
-<link rel="stylesheet" href="/static/css/app.css?v=3">
+<link rel="stylesheet" href="/static/css/app.css?v=4">
 <link rel="stylesheet" href="/static/css/print.css?v=3">
 <script src="/static/js/htmx.min.js?v=3" defer></script>
 </head>
@@ -19,7 +19,7 @@
    `user_name`, and `user_initial` (one capital letter). #}
 <body class="antialiased">
 <div class="min-h-screen lg:flex">
-  <aside class="lg:w-60 lg:shrink-0 lg:min-h-screen flex lg:flex-col flex-row items-center lg:items-stretch gap-2 lg:gap-0 p-3 lg:p-4 overflow-x-auto" style="background:#141422;color:#cfcfe6">
+  <aside class="app-sidebar lg:w-60 lg:shrink-0 flex lg:flex-col flex-row items-center lg:items-stretch gap-2 lg:gap-0 p-3 lg:p-4 overflow-x-auto" style="background:#141422;color:#cfcfe6">
     <div class="flex items-center gap-3 px-2 py-2 lg:py-4 shrink-0">
       <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg" style="background:var(--accent)">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 2 9l10 5 10-5-10-5Z"/><path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5"/><path d="M22 9v5"/></svg>
@@ -29,7 +29,7 @@
         <div class="text-xs mt-1" style="color:#8f8fb3">School workspace</div>
       </div>
     </div>
-    <nav class="flex lg:flex-col flex-row items-center lg:items-stretch gap-1 lg:mt-2" aria-label="Primary">
+    <nav class="app-sidebar-nav flex lg:flex-col flex-row items-center lg:items-stretch gap-1 lg:mt-2" aria-label="Primary">
       <a class="navlink {% if section == "dashboard" %}navlink-active{% endif %}" href="/dashboard" {% if section == "dashboard" %}aria-current="page"{% endif %}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
         <span class="hidden md:inline">Dashboard</span>
@@ -166,6 +166,29 @@
     var sel = (role === "parent" || role === "student") ? "[data-staff]" : "[data-family]";
     document.querySelectorAll(sel).forEach(function (e) { e.remove(); });
   }).catch(function () {});
+
+  // CSRF defense-in-depth: echo the double-submit token into every POST form so
+  // it is validated even if the browser strips Origin/Referer. (Same-origin
+  // Origin matching is the primary defense; this is belt-and-suspenders.)
+  function csrfToken() {
+    var m = document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+  document.addEventListener("submit", function (ev) {
+    var f = ev.target;
+    if (!f || f.method.toLowerCase() !== "post") return;
+    if (f.querySelector('input[name="_csrf"]')) return;
+    var t = csrfToken();
+    if (!t) return;
+    var i = document.createElement("input");
+    i.type = "hidden"; i.name = "_csrf"; i.value = t;
+    f.appendChild(i);
+  }, true);
+  // htmx requests: send the token as a header.
+  document.addEventListener("htmx:configRequest", function (ev) {
+    var t = csrfToken();
+    if (t) ev.detail.headers["X-CSRF-Token"] = t;
+  });
 })();
 </script>
 </body>
