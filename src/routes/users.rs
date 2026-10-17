@@ -79,7 +79,15 @@ pub fn validate_new_user(email: &str, full_name: &str, role_raw: &str) -> Result
     if full_name.trim().is_empty() {
         return Err(AppError::BadRequest("Full name is required".to_string()));
     }
-    role_raw.trim().parse::<Role>().map_err(AppError::BadRequest)
+    let role = role_raw.trim().parse::<Role>().map_err(AppError::BadRequest)?;
+    // Parent/student logins must be created from the student's profile (which
+    // links them to a student), not here, or they land on an empty portal.
+    if matches!(role, Role::Parent | Role::Student) {
+        return Err(AppError::BadRequest(
+            "Create parent/student logins from the student's profile, not the users page".to_string(),
+        ));
+    }
+    Ok(role)
 }
 
 /// True when an admin targets their own row (toggle/delete must refuse this).
@@ -101,7 +109,7 @@ async fn list_users(pool: &sqlx::PgPool) -> Result<Vec<UserListRow>, AppError> {
     let rows = sqlx::query_as::<_, UserListRow>(
         "SELECT id, email, full_name, role, active,
                 to_char(created_at, 'YYYY-MM-DD') AS created
-         FROM users ORDER BY id",
+         FROM users ORDER BY id LIMIT 500",
     )
     .fetch_all(pool)
     .await?;
@@ -303,6 +311,18 @@ mod tests {
         ));
         assert!(matches!(
             validate_new_user("a@example.com", "Ada", ""),
+            Err(AppError::BadRequest(_))
+        ));
+    }
+
+    #[test]
+    fn rejects_family_roles_from_inline_form() {
+        assert!(matches!(
+            validate_new_user("p@example.com", "Parent", "parent"),
+            Err(AppError::BadRequest(_))
+        ));
+        assert!(matches!(
+            validate_new_user("s@example.com", "Student", "student"),
             Err(AppError::BadRequest(_))
         ));
     }

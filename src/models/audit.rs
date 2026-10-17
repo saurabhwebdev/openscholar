@@ -169,6 +169,20 @@ pub async fn list_for<E: AsRef<str>>(
 // ---------------------------------------------------------------------------
 
 pub fn csv_quote(field: &str) -> String {
+    // Neutralize spreadsheet formula injection: a cell beginning with =,+,-,@
+    // (or a lone tab/CR) is executed as a formula by Excel/Sheets on open.
+    // Prefix such fields with a single quote before applying CSV quoting.
+    let needs_formula_guard = field
+        .chars()
+        .next()
+        .is_some_and(|c| matches!(c, '=' | '+' | '-' | '@' | '\t' | '\r'));
+    let guarded;
+    let field = if needs_formula_guard {
+        guarded = format!("'{field}");
+        guarded.as_str()
+    } else {
+        field
+    };
     if field.contains(',') || field.contains('"') || field.contains('\n') || field.contains('\r') {
         format!("\"{}\"", field.replace('"', "\"\""))
     } else {
@@ -368,7 +382,11 @@ pub async fn csv_import_students(
             Err(AppError::Db(sqlx::Error::Database(db))) if db.code().as_deref() == Some("23505") => {
                 report.skipped += 1;
             }
-            Err(e) => return Err(e),
+            // Record the row that failed and keep going, instead of aborting the
+            // whole import with a 500 after some rows already committed.
+            Err(e) => {
+                report.errors.push(format!("row {}: {}", report.inserted + report.skipped + report.errors.len() + 1, e));
+            }
         }
     }
 

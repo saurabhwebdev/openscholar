@@ -95,12 +95,18 @@ pub fn build_message(
 /// Local relays speak plaintext; anything else goes through `relay`
 /// (STARTTLS). Unit-testable: building never opens a connection.
 fn build_transport(config: &SmtpConfig) -> Result<SmtpTransport, String> {
-    // NOTE: `SmtpTransport::relay` (TLS) is unavailable: the crate enables
-    // only `smtp-transport`+`builder` (no TLS backend), so every host goes
-    // through `builder_dangerous` for now. Local relays are plaintext
-    // anyway; enabling `rustls-tls` later restores encrypted remote relay.
-    let builder = SmtpTransport::builder_dangerous(config.host.trim().to_string());
-    let builder = builder.port(config.port);
+    let host = config.host.trim().to_string();
+    // Loopback relays (e.g. Mailpit on localhost) speak plaintext; any real
+    // remote relay must use STARTTLS so credentials and parent email content
+    // are never sent in the clear.
+    let is_local = matches!(host.as_str(), "localhost" | "127.0.0.1" | "::1" | "[::1]");
+    let builder = if is_local {
+        SmtpTransport::builder_dangerous(host).port(config.port)
+    } else {
+        SmtpTransport::relay(&host)
+            .map_err(|e| format!("cannot configure TLS relay for {host}: {e}"))?
+            .port(config.port)
+    };
     let builder = if config.has_credentials() {
         builder.credentials(Credentials::new(
             config.user.clone().unwrap_or_default(),

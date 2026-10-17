@@ -173,19 +173,43 @@ fn input_from_form(form: &StudentForm) -> Result<StudentInput, AppError> {
     ) {
         return Err(AppError::BadRequest(msg));
     }
+    let date_of_birth = parse_date(&form.date_of_birth)?;
+    let enrolled_on =
+        parse_date(&form.enrolled_on)?.unwrap_or_else(|| chrono::Local::now().date_naive());
+    let today = chrono::Local::now().date_naive();
+    if let Some(dob) = date_of_birth {
+        if dob > today {
+            return Err(AppError::BadRequest(
+                "Date of birth cannot be in the future".to_string(),
+            ));
+        }
+        if dob > enrolled_on {
+            return Err(AppError::BadRequest(
+                "Date of birth cannot be after the enrolment date".to_string(),
+            ));
+        }
+    }
+    let guardian_email = empty_to_none(&form.guardian_email);
+    if let Some(ref email) = guardian_email {
+        // Minimal shape check: something@something.something
+        if !(email.contains('@') && email.split('@').nth(1).is_some_and(|d| d.contains('.'))) {
+            return Err(AppError::BadRequest(
+                "Guardian email is not a valid address".to_string(),
+            ));
+        }
+    }
     Ok(StudentInput {
         admission_no: form.admission_no.trim().to_string(),
         first_name: form.first_name.trim().to_string(),
         last_name: form.last_name.trim().to_string(),
-        date_of_birth: parse_date(&form.date_of_birth)?,
+        date_of_birth,
         gender: empty_to_none(&form.gender),
         guardian_name: empty_to_none(&form.guardian_name),
         guardian_phone: empty_to_none(&form.guardian_phone),
-        guardian_email: empty_to_none(&form.guardian_email),
+        guardian_email,
         address: empty_to_none(&form.address),
         status,
-        enrolled_on: parse_date(&form.enrolled_on)?
-            .unwrap_or_else(|| chrono::Local::now().date_naive()),
+        enrolled_on,
     })
 }
 

@@ -347,7 +347,7 @@ async fn hr_leave_approve(
     Extension(user): Extension<CurrentUser>,
     Path(id): Path<i64>,
 ) -> Result<Response, AppError> {
-    require_roles(&user, &[Role::Admin, Role::Staff])?;
+    require_roles(&user, &[Role::Admin])?; // payroll/leave decisions are admin-only
     match hr_model::approve_leave(&state.pool, id, user.id).await {
         Ok(_) => Ok(ok_redirect("/hr", "Leave approved")),
         Err(AppError::NotFound) => Ok(fail_redirect("/hr", "Leave request not found")),
@@ -361,7 +361,7 @@ async fn hr_leave_reject(
     Extension(user): Extension<CurrentUser>,
     Path(id): Path<i64>,
 ) -> Result<Response, AppError> {
-    require_roles(&user, &[Role::Admin, Role::Staff])?;
+    require_roles(&user, &[Role::Admin])?; // payroll/leave decisions are admin-only
     match hr_model::reject_leave(&state.pool, id, user.id).await {
         Ok(_) => Ok(ok_redirect("/hr", "Leave rejected")),
         Err(AppError::NotFound) => Ok(fail_redirect("/hr", "Leave request not found")),
@@ -389,7 +389,7 @@ async fn hr_payroll(
     Extension(user): Extension<CurrentUser>,
     Form(form): Form<PayrollForm>,
 ) -> Result<Response, AppError> {
-    require_roles(&user, &[Role::Admin, Role::Staff])?;
+    require_roles(&user, &[Role::Admin])?; // payroll/leave decisions are admin-only
     let staff_id: i64 = match form.staff_id.trim().parse() {
         Ok(id) => id,
         Err(_) => return Ok(fail_redirect("/hr", "Choose a staff member")),
@@ -418,7 +418,7 @@ async fn hr_payroll_delete(
     Extension(user): Extension<CurrentUser>,
     Path(id): Path<i64>,
 ) -> Result<Response, AppError> {
-    require_roles(&user, &[Role::Admin, Role::Staff])?;
+    require_roles(&user, &[Role::Admin])?; // payroll/leave decisions are admin-only
     match hr_model::delete_payroll(&state.pool, id).await {
         Ok(_) => Ok(ok_redirect("/hr", "Payroll deleted")),
         Err(AppError::NotFound) => Ok(fail_redirect("/hr", "Payroll not found")),

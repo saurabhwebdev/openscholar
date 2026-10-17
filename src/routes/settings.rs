@@ -69,10 +69,6 @@ fn db_flash(e: AppError) -> (String, String) {
     }
 }
 
-fn opt_text(v: Option<String>) -> Option<String> {
-    v.map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
-}
-
 struct YearOption {
     id: i64,
     name: String,

@@ -57,8 +57,14 @@ pub fn validate_attachment(
     if size_bytes < 0 {
         return Err("Size must be non-negative".to_string());
     }
+    if size_bytes > MAX_ATTACHMENT_BYTES {
+        return Err("File exceeds the 10 MB upload limit".to_string());
+    }
     Ok(())
 }
+
+/// Hard cap on a stored attachment's decoded size.
+pub const MAX_ATTACHMENT_BYTES: i64 = 10 * 1024 * 1024;
 
 pub async fn list_for(
     pool: &PgPool,

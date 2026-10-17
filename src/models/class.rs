@@ -295,33 +295,69 @@ pub async fn list_teacher_options(pool: &PgPool) -> Result<Vec<TeacherOption>, A
 /// Enroll with friendly errors: duplicates and full classes become
 /// `BadRequest` (routes turn these into flash messages, never 500s).
 pub async fn enroll(pool: &PgPool, class_id: i64, student_id: i64) -> Result<(), AppError> {
-    let exists: Option<i64> = sqlx::query_scalar("SELECT id FROM classes WHERE id = $1")
-        .bind(class_id)
-        .fetch_optional(pool)
-        .await?;
-    if exists.is_none() {
-        return Err(AppError::NotFound);
+    // Lock the class row so the capacity check and the insert are serialized
+    // (no TOCTOU over-enrollment under concurrency).
+    let mut tx = pool.begin().await?;
+    let class: Option<(Option<i32>, i64)> =
+        sqlx::query_as("SELECT capacity, school_year_id FROM classes WHERE id = $1 FOR UPDATE")
+            .bind(class_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+    let (capacity, school_year_id) = match class {
+        Some(c) => c,
+        None => return Err(AppError::NotFound),
+    };
+
+    // Student must exist and be active (the picker filters active, but a direct
+    // POST could supply any id).
+    let student_active: Option<bool> =
+        sqlx::query_scalar("SELECT (status = 'active') FROM students WHERE id = $1")
+            .bind(student_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+    match student_active {
+        None => return Err(AppError::BadRequest("Student not found".to_string())),
+        Some(false) => {
+            return Err(AppError::BadRequest(
+                "Only active students can be enrolled".to_string(),
+            ));
+        }
+        Some(true) => {}
     }
+
+    // Don't enroll into an archived (non-current) year when a current year exists.
+    let is_current: bool = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT is_current FROM school_years WHERE id = $1), FALSE)",
+    )
+    .bind(school_year_id)
+    .fetch_one(&mut *tx)
+    .await?;
+    let current_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM school_years WHERE is_current)")
+            .fetch_one(&mut *tx)
+            .await?;
+    if current_exists && !is_current {
+        return Err(AppError::BadRequest(
+            "This class belongs to a past school year; enroll into a current-year class".to_string(),
+        ));
+    }
+
     let already: Option<i64> = sqlx::query_scalar(
         "SELECT id FROM enrollments WHERE class_id = $1 AND student_id = $2",
     )
     .bind(class_id)
     .bind(student_id)
-    .fetch_optional(pool)
+    .fetch_optional(&mut *tx)
     .await?;
     if already.is_some() {
         return Err(AppError::BadRequest(
             "Student is already enrolled in this class".to_string(),
         ));
     }
-    let capacity: Option<i32> = sqlx::query_scalar("SELECT capacity FROM classes WHERE id = $1")
-        .bind(class_id)
-        .fetch_one(pool)
-        .await?;
     if let Some(cap) = capacity {
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM enrollments WHERE class_id = $1")
             .bind(class_id)
-            .fetch_one(pool)
+            .fetch_one(&mut *tx)
             .await?;
         if count >= cap as i64 {
             return Err(AppError::BadRequest(
@@ -329,18 +365,22 @@ pub async fn enroll(pool: &PgPool, class_id: i64, student_id: i64) -> Result<(),
             ));
         }
     }
-    let result = sqlx::query(
-        "INSERT INTO enrollments (class_id, student_id) VALUES ($1, $2)",
-    )
-    .bind(class_id)
-    .bind(student_id)
-    .execute(pool)
-    .await;
+    let result = sqlx::query("INSERT INTO enrollments (class_id, student_id) VALUES ($1, $2)")
+        .bind(class_id)
+        .bind(student_id)
+        .execute(&mut *tx)
+        .await;
     match result {
-        Ok(_) => Ok(()),
+        Ok(_) => {
+            tx.commit().await?;
+            Ok(())
+        }
         Err(sqlx::Error::Database(db)) if db.is_unique_violation() => Err(AppError::BadRequest(
             "Student is already enrolled in this class".to_string(),
         )),
+        Err(sqlx::Error::Database(db)) if db.code().as_deref() == Some("23503") => Err(
+            AppError::BadRequest("Student or class not found".to_string()),
+        ),
         Err(e) => Err(AppError::from(e)),
     }
 }

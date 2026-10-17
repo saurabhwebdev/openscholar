@@ -152,13 +152,38 @@ async fn import_students(
 ) -> Result<impl IntoResponse, AppError> {
     require_roles(&user, &[Role::Admin])?;
     let report = audit_model::csv_import_students(&state.pool, &form.csv).await?;
-    let msg = format!(
+    if let Err(e) = audit_model::log_action(
+        &state.pool,
+        Some(user.id),
+        "import",
+        "student",
+        None,
+        Some(format!(
+            "csv import: {} inserted, {} skipped, {} errors",
+            report.inserted,
+            report.skipped,
+            report.errors.len()
+        )),
+    )
+    .await
+    {
+        tracing::warn!(error = %e, "audit log failed");
+    }
+    let mut msg = format!(
         "Imported {}, skipped {}, {} errors",
         report.inserted,
         report.skipped,
         report.errors.len()
     );
-    Ok(flash_redirect("/audit", &msg, "ok").into_response())
+    if !report.errors.is_empty() {
+        // Append the first few failing rows so the operator can see what broke.
+        let shown: Vec<String> = report.errors.iter().take(3).cloned().collect();
+        msg.push_str(" — ");
+        msg.push_str(&shown.join("; "));
+    }
+    // Green only on a clean import; otherwise warn.
+    let kind = if report.errors.is_empty() { "ok" } else { "error" };
+    Ok(flash_redirect("/audit", &msg, kind).into_response())
 }
 
 #[cfg(test)]

@@ -111,15 +111,17 @@ pub async fn find_room(pool: &PgPool, id: i64) -> Result<Option<RoomRow>, AppErr
 }
 
 pub async fn delete_room(pool: &PgPool, id: i64) -> Result<(), AppError> {
+    // Only block on *open* allocations; a room whose occupants have all been
+    // released should still be decommissionable.
     let count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*)::BIGINT FROM hostel_allocations WHERE room_id = $1",
+        "SELECT COUNT(*)::BIGINT FROM hostel_allocations WHERE room_id = $1 AND released_on IS NULL",
     )
     .bind(id)
     .fetch_one(pool)
     .await?;
     if count > 0 {
         return Err(AppError::BadRequest(
-            "Room has allocations and cannot be deleted".to_string(),
+            "Room has current occupants and cannot be deleted".to_string(),
         ));
     }
     let done = sqlx::query("DELETE FROM hostel_rooms WHERE id = $1")

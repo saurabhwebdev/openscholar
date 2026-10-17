@@ -57,7 +57,8 @@ fn flash_redirect(base: &str, msg: &str, kind: &str) -> Redirect {
 }
 
 fn check_mutate(user: &CurrentUser) -> Result<(), AppError> {
-    crate::auth::middleware::require_roles(user, &[Role::Admin, Role::Staff])
+    // Teachers run clubs/activities, same as they manage lessons.
+    crate::auth::middleware::require_roles(user, &[Role::Admin, Role::Staff, Role::Teacher])
 }
 
 // ---- list ----

@@ -24,9 +24,13 @@ pub async fn seed_demo(pool: &PgPool) -> Result<bool, AppError> {
         return Ok(false);
     }
 
+    // On a fresh DB (no current year) make the demo year current so the
+    // dashboard/classes/grades/portal are populated; if a real current year
+    // already exists, stay non-intrusive and leave it alone.
     let year_inserted = sqlx::query(
         "INSERT INTO school_years (name, start_date, end_date, is_current)
-         VALUES ($1, '2025-09-01', '2026-06-30', FALSE)
+         VALUES ($1, '2025-09-01', '2026-06-30',
+                 NOT EXISTS (SELECT 1 FROM school_years WHERE is_current))
          ON CONFLICT DO NOTHING",
     )
     .bind(DEMO_YEAR_NAME)
@@ -85,6 +89,45 @@ pub async fn seed_demo(pool: &PgPool) -> Result<bool, AppError> {
     .bind(DEMO_STUDENT_NOS.to_vec())
     .bind(DEMO_YEAR_NAME)
     .bind(DEMO_CLASS_NAME)
+    .execute(pool)
+    .await?;
+
+    // A demo assessment + grades so the Grades page isn't empty.
+    sqlx::query(
+        "INSERT INTO assessments (class_id, name, kind, max_score, weight, date)
+         SELECT c.id, 'Demo Quiz', 'quiz', 20, 1, '2025-10-01'
+         FROM classes c JOIN school_years y ON y.id = c.school_year_id
+         WHERE y.name = $1 AND c.name = $2
+         ON CONFLICT DO NOTHING",
+    )
+    .bind(DEMO_YEAR_NAME)
+    .bind(DEMO_CLASS_NAME)
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "INSERT INTO grades (assessment_id, student_id, score)
+         SELECT a.id, s.id, 16
+         FROM assessments a
+         JOIN classes c ON c.id = a.class_id
+         JOIN school_years y ON y.id = c.school_year_id
+         JOIN students s ON s.admission_no = ANY($1)
+         WHERE y.name = $2 AND c.name = $3 AND a.name = 'Demo Quiz'
+         ON CONFLICT DO NOTHING",
+    )
+    .bind(DEMO_STUDENT_NOS.to_vec())
+    .bind(DEMO_YEAR_NAME)
+    .bind(DEMO_CLASS_NAME)
+    .execute(pool)
+    .await?;
+
+    // A demo invoice so the Fees page isn't empty.
+    sqlx::query(
+        "INSERT INTO invoices (student_id, title, amount_cents, due_date)
+         SELECT s.id, 'Term 1 Tuition', 50000, '2025-10-15'
+         FROM students s WHERE s.admission_no = $1
+         ON CONFLICT DO NOTHING",
+    )
+    .bind(DEMO_STUDENT_NOS[0])
     .execute(pool)
     .await?;
 

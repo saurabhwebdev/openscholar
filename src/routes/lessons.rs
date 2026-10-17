@@ -186,6 +186,11 @@ async fn create_lesson_submit(
     };
     match lm::create_lesson(&state.pool, &input).await {
         Ok(row) => Ok(Redirect::to(&format!("/lessons/{}", row.id)).into_response()),
+        // A bad class_id (e.g. deleted between page load and submit) is a 23503
+        // FK violation — surface a flash, not a 500.
+        Err(AppError::Db(sqlx::Error::Database(db))) if db.code().as_deref() == Some("23503") => {
+            Ok(flash_redirect("/lessons", "That class no longer exists", "error").into_response())
+        }
         Err(e) => Err(e),
     }
 }
@@ -257,6 +262,9 @@ async fn add_material_submit(
     Form(form): Form<MaterialForm>,
 ) -> Result<Response, AppError> {
     check_mutate(&user)?;
+    if form.filename.trim().is_empty() {
+        return Ok(flash_redirect(&format!("/lessons/{id}"), "File name is required", "error").into_response());
+    }
     let size: i64 = form.size_bytes.trim().parse().unwrap_or(0);
     let storage_key = if form.storage_key.trim().is_empty() {
         form.filename.trim().to_string()
@@ -265,6 +273,9 @@ async fn add_material_submit(
     };
     match lm::add_material(&state.pool, id, &form.filename, &storage_key, size).await {
         Ok(_) => Ok(Redirect::to(&format!("/lessons/{id}?flash=Material+added&flash_kind=ok")).into_response()),
+        Err(AppError::Db(sqlx::Error::Database(db))) if db.code().as_deref() == Some("23503") => {
+            Ok(flash_redirect(&format!("/lessons/{id}"), "That lesson no longer exists", "error").into_response())
+        }
         Err(e) => Err(e),
     }
 }

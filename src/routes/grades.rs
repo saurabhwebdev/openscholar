@@ -184,8 +184,15 @@ async fn grades_list(
                 weight_display: fmt_num(a.weight),
                 date: a.date.to_string(),
                 avg: a.avg,
-                avg_display: a.avg.map(|v| format!("{v:.1}")).unwrap_or_default(),
-                avg_ok: a.avg.is_some_and(|v| v >= 50.0),
+                // Show the mean out of the assessment's max, and base the
+                // pass/fail pill on the percentage (not a raw score vs 50).
+                avg_display: a
+                    .avg
+                    .map(|v| format!("{v:.1} / {:.0}", a.max_score))
+                    .unwrap_or_default(),
+                avg_ok: a
+                    .avg
+                    .is_some_and(|v| a.max_score > 0.0 && (v / a.max_score * 100.0) >= 50.0),
                 graded_count: a.graded_count,
             })
             .collect(),

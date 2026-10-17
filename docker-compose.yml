@@ -12,9 +12,27 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme-admin-123}
       ADMIN_NAME: ${ADMIN_NAME:-Administrator}
+      # Enable /api/* bearer access by setting a strong token (else disabled).
+      API_TOKEN: ${API_TOKEN:-}
+      # HTTPS-only session cookie; keep true behind TLS.
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      # Run in the school's timezone so persisted/display dates are correct.
+      TZ: ${TZ:-UTC}
       RUST_LOG: ${RUST_LOG:-opencodetest=info,tower_http=info,sqlx=warn}
     ports:
       - "8081:8081"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # Persist uploaded attachments across container restarts.
+    volumes:
+      - openscholar_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8081/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
+
+volumes:
+  openscholar_uploads:

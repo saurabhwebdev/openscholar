@@ -407,9 +407,16 @@ pub async fn save_slot(
     .await;
     match id {
         Ok(id) => Ok(id),
-        Err(sqlx::Error::Database(db)) if db.is_unique_violation() => Err(AppError::BadRequest(
-            "That class already has a lesson in this period".to_string(),
-        )),
+        Err(sqlx::Error::Database(db)) if db.is_unique_violation() => {
+            // Distinguish the teacher-period backstop (race) from the class-period key.
+            let msg = match db.constraint() {
+                Some("slots_teacher_period_uniq") => {
+                    "That teacher is already booked in this period".to_string()
+                }
+                _ => "That class already has a lesson in this period".to_string(),
+            };
+            Err(AppError::BadRequest(msg))
+        }
         Err(e) => Err(AppError::from(e)),
     }
 }

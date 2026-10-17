@@ -142,6 +142,18 @@ pub async fn save_attendance(
         if entry.student_id <= 0 {
             continue;
         }
+        // Only mark students actually enrolled in this class — a crafted
+        // `status_<id>` key must not attach a foreign student to the class.
+        let enrolled: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM enrollments WHERE class_id = $1 AND student_id = $2)",
+        )
+        .bind(class_id)
+        .bind(entry.student_id)
+        .fetch_one(&mut *tx)
+        .await?;
+        if !enrolled {
+            continue;
+        }
         validate_status(&entry.status).map_err(AppError::BadRequest)?;
         let note = entry
             .note

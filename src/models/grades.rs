@@ -243,9 +243,12 @@ pub async fn save_scores(
     assessment_id: i64,
     scores: &[(i64, Option<f64>)],
 ) -> Result<(), AppError> {
+    // Whole grid saves all-or-nothing: a mid-loop failure must not leave some
+    // students' scores saved and others lost.
+    let mut tx = pool.begin().await?;
     let exists: Option<i64> = sqlx::query_scalar("SELECT id FROM assessments WHERE id = $1")
         .bind(assessment_id)
-        .fetch_optional(pool)
+        .fetch_optional(&mut *tx)
         .await?;
     if exists.is_none() {
         return Err(AppError::NotFound);
@@ -256,7 +259,7 @@ pub async fn save_scores(
                 sqlx::query("DELETE FROM grades WHERE assessment_id = $1 AND student_id = $2")
                     .bind(assessment_id)
                     .bind(student_id)
-                    .execute(pool)
+                    .execute(&mut *tx)
                     .await?;
             }
             Some(s) => {
@@ -269,11 +272,12 @@ pub async fn save_scores(
                 .bind(assessment_id)
                 .bind(student_id)
                 .bind(s)
-                .execute(pool)
+                .execute(&mut *tx)
                 .await?;
             }
         }
     }
+    tx.commit().await?;
     Ok(())
 }
 
@@ -298,9 +302,14 @@ pub async fn class_overview(
     let rows = sqlx::query_as::<_, StudentOverview>(
         "SELECT s.id AS student_id,
                 (s.first_name || ' ' || s.last_name) AS full_name,
-                (100 * SUM(g.score::FLOAT8 / NULLIF(a.max_score::FLOAT8, 0) * a.weight::FLOAT8)
-                 / NULLIF(SUM(CASE WHEN g.score IS NOT NULL THEN a.weight::FLOAT8 ELSE 0 END), 0)
-                )::FLOAT8 AS percent,
+                (CASE
+                    WHEN SUM(CASE WHEN g.score IS NOT NULL THEN a.weight::FLOAT8 ELSE 0 END) > 0
+                        THEN 100 * SUM(g.score::FLOAT8 / NULLIF(a.max_score::FLOAT8, 0) * a.weight::FLOAT8)
+                             / SUM(CASE WHEN g.score IS NOT NULL THEN a.weight::FLOAT8 ELSE 0 END)
+                    WHEN COUNT(g.score) > 0
+                        THEN 100 * AVG(g.score::FLOAT8 / NULLIF(a.max_score::FLOAT8, 0))
+                    ELSE NULL
+                 END)::FLOAT8 AS percent,
                 COUNT(g.score) AS graded
           FROM enrollments e
           JOIN students s ON s.id = e.student_id

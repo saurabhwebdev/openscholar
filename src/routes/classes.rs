@@ -283,7 +283,8 @@ async fn delete_class_submit(
     Extension(user): Extension<CurrentUser>,
     Path(id): Path<i64>,
 ) -> Result<impl IntoResponse, AppError> {
-    check_mutate(&user)?;
+    // Admin-only: deleting a class cascades its enrollments and grades.
+    crate::auth::middleware::require_roles(&user, &[Role::Admin])?;
     // `?` propagates NotFound as a real 404 when 0 rows are deleted.
     let year_id = class_model::delete_class(&state.pool, id).await?;
     Ok(flash_redirect(
@@ -298,7 +299,8 @@ async fn delete_year_submit(
     Extension(user): Extension<CurrentUser>,
     Path(id): Path<i64>,
 ) -> Result<impl IntoResponse, AppError> {
-    check_mutate(&user)?;
+    // Admin-only: deleting a school year is a bulk destructive operation.
+    crate::auth::middleware::require_roles(&user, &[Role::Admin])?;
     let year = match class_model::year_row(&state.pool, id).await {
         Ok(y) => y,
         Err(AppError::NotFound) => return Ok(flash_redirect("/classes", "Not found", "error")),

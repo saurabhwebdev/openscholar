@@ -24,6 +24,9 @@ pub fn router() -> Router<AppState> {
         .route("/attachments", get(list).post(create))
         .route("/attachments/{id}/delete", post(delete_attachment))
         .route("/attachments/{id}/download", get(download))
+        // Base64 inflates ~33%; allow headroom above the 10 MB decoded cap so a
+        // legitimate document isn't rejected by axum's 2 MB default body limit.
+        .layer(axum::extract::DefaultBodyLimit::max(16 * 1024 * 1024))
 }
 
 fn user_initial(user: &CurrentUser) -> String {
@@ -180,8 +183,20 @@ async fn create(
     )
     .await?;
 
+    if let Err(e) = crate::models::audit::log_action(
+        &state.pool,
+        Some(user.id),
+        "upload",
+        "attachment",
+        Some(row.id),
+        Some(format!("{entity}#{entity_id}: {filename}")),
+    )
+    .await
+    {
+        tracing::warn!(error = %e, "audit log failed");
+    }
+
     let redirect = redirect_after(&entity, entity_id, "Uploaded");
-    let _ = row;
     Ok(Redirect::to(&redirect).into_response())
 }
 
@@ -208,6 +223,18 @@ async fn delete_attachment(
         Some(r) => (r.entity, r.entity_id),
         None => return Err(AppError::NotFound),
     };
+    if let Err(e) = crate::models::audit::log_action(
+        &state.pool,
+        Some(user.id),
+        "delete",
+        "attachment",
+        Some(id),
+        Some(format!("{entity}#{entity_id}")),
+    )
+    .await
+    {
+        tracing::warn!(error = %e, "audit log failed");
+    }
     let base = match entity.as_str() {
         "student" => format!("/students/{}", entity_id),
         _ => "/attachments".to_string(),

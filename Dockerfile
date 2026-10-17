@@ -24,13 +24,14 @@ RUN cargo clean -p opencodetest && cargo build --release
 
 FROM debian:bookworm-slim
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates \
+  && apt-get install -y --no-install-recommends ca-certificates curl \
   && rm -rf /var/lib/apt/lists/* \
   && useradd -m -u 10001 app
 WORKDIR /app
 COPY --from=builder /app/target/release/opencodetest ./opencodetest
 COPY static ./static
-RUN chown -R app:app /app
+# Attachments are written here at runtime; the handler needs a writable dir.
+RUN mkdir -p /app/uploads && chown -R app:app /app
 USER app
 
 ENV BIND_ADDR=0.0.0.0:8081

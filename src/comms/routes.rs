@@ -245,6 +245,18 @@ async fn send_due_submit(
         }
     }
 
+    if let Err(e) = crate::models::audit::log_action(
+        &state.pool,
+        Some(user.id),
+        "send",
+        "email_outbox",
+        None,
+        Some(format!("send-due sweep: {sent} sent, {failed} failed")),
+    )
+    .await
+    {
+        tracing::warn!(error = %e, "audit log failed");
+    }
     let msg = send_summary(sent, failed);
     let kind = if failed == 0 { "ok" } else { "error" };
     Ok(flash_redirect("/outbox", &msg, kind))

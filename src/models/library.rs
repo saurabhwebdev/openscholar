@@ -305,7 +305,9 @@ pub async fn return_book_on(
         .bind(returned_on)
         .execute(&mut *tx)
         .await?;
-    sqlx::query("UPDATE books SET available = available + 1 WHERE id = $1")
+    // Clamp to `copies` so returning a loan after copies were manually reduced
+    // can't push available above copies (which would violate the CHECK).
+    sqlx::query("UPDATE books SET available = LEAST(available + 1, copies) WHERE id = $1")
         .bind(loan.book_id)
         .execute(&mut *tx)
         .await?;
