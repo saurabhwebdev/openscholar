@@ -89,7 +89,7 @@ async fn login_submit(
     let mut headers = HeaderMap::new();
     headers.insert(
         SET_COOKIE,
-        HeaderValue::from_str(&session::set_cookie_header(session_id))
+        HeaderValue::from_str(&session::set_cookie_header(session_id, state.config.cookie_secure))
             .map_err(|e| AppError::Internal(e.to_string()))?,
     );
     Ok((headers, Redirect::to(&target)).into_response())
@@ -109,7 +109,7 @@ async fn logout(
     let mut out = HeaderMap::new();
     out.insert(
         SET_COOKIE,
-        HeaderValue::from_str(&session::clear_cookie_header())
+        HeaderValue::from_str(&session::clear_cookie_header(state.config.cookie_secure))
             .map_err(|e| AppError::Internal(e.to_string()))?,
     );
     Ok((out, Redirect::to("/login")).into_response())
@@ -118,7 +118,17 @@ async fn logout(
 /// Only allow local redirect targets so `?next=` can't bounce to another site.
 fn sanitize_next(next: Option<&str>) -> String {
     match next {
-        Some(p) if p.starts_with('/') && !p.starts_with("//") => p.to_string(),
+        // Must be a site-local path: a single leading '/', and no backslash or
+        // control chars that a browser would renormalise into a protocol-relative
+        // ('//host' / '/\host') or header-splitting target.
+        Some(p)
+            if p.starts_with('/')
+                && !p.starts_with("//")
+                && !p.contains('\\')
+                && !p.chars().any(|c| c.is_control()) =>
+        {
+            p.to_string()
+        }
         _ => "/dashboard".to_string(),
     }
 }
@@ -139,5 +149,9 @@ mod tests {
         assert_eq!(sanitize_next(Some("https://evil.com")), "/dashboard");
         assert_eq!(sanitize_next(Some("")), "/dashboard");
         assert_eq!(sanitize_next(None), "/dashboard");
+        // Backslash / control-char bypasses must also be rejected.
+        assert_eq!(sanitize_next(Some("/\\evil.com")), "/dashboard");
+        assert_eq!(sanitize_next(Some("/\tevil.com")), "/dashboard");
+        assert_eq!(sanitize_next(Some("/\r\nSet-Cookie: x")), "/dashboard");
     }
 }

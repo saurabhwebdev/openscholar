@@ -213,6 +213,10 @@ async fn lesson_detail(
     Path(id): Path<i64>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, AppError> {
+    // Staff-side only: the family workspace uses the scoped `/lessons/my` list.
+    // Without this gate any authenticated parent/student could read any lesson
+    // (body/homework + material keys) by id (IDOR).
+    check_mutate(&user)?;
     let lesson = lm::find_lesson(&state.pool, id)
         .await?
         .ok_or(AppError::NotFound)?;

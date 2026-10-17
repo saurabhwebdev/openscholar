@@ -83,6 +83,8 @@ pub fn app_router(state: AppState) -> Router {
         .merge(api::health_router())
         .merge(protected)
         .nest_service("/static", ServeDir::new("static"))
-        .nest_service("/uploads", ServeDir::new("uploads"))
+        // NOTE: `uploads/` is intentionally NOT served as a static mount. Uploaded
+        // documents (incl. student welfare/medical) are delivered only through the
+        // authenticated, role-gated `/attachments/{id}/download` handler.
         .with_state(state)
 }

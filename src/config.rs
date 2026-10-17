@@ -5,6 +5,9 @@ pub struct Config {
     pub admin_email: String,
     pub admin_password: String,
     pub admin_name: String,
+    /// Whether session cookies carry the `Secure` flag (HTTPS-only). Defaults to
+    /// true; set `COOKIE_SECURE=false` only for local plain-HTTP development.
+    pub cookie_secure: bool,
 }
 
 impl Config {
@@ -22,6 +25,9 @@ impl Config {
             admin_password: get("ADMIN_PASSWORD")
                 .unwrap_or_else(|| "changeme-admin-123".to_string()),
             admin_name: get("ADMIN_NAME").unwrap_or_else(|| "Administrator".to_string()),
+            cookie_secure: get("COOKIE_SECURE")
+                .map(|v| !matches!(v.trim().to_ascii_lowercase().as_str(), "0" | "false" | "no"))
+                .unwrap_or(true),
         }
     }
 }
@@ -43,6 +49,14 @@ mod tests {
         assert_eq!(cfg.bind_addr, "0.0.0.0:3000");
         assert!(!cfg.admin_email.is_empty());
         assert!(!cfg.admin_password.is_empty());
+        assert!(cfg.cookie_secure, "cookies must default to Secure");
+    }
+
+    #[test]
+    fn cookie_secure_can_be_disabled_for_dev() {
+        let vars = HashMap::from([("COOKIE_SECURE".to_string(), "false".to_string())]);
+        let cfg = Config::from_getter(&getter(&vars));
+        assert!(!cfg.cookie_secure);
     }
 
     #[test]

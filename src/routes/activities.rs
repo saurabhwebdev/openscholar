@@ -170,6 +170,10 @@ async fn activity_detail(
     Path(id): Path<i64>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, AppError> {
+    // Staff-side only: the family workspace uses the scoped `/activities/my`
+    // list. Without this gate any authenticated parent/student could read any
+    // activity's member roster (student names) by id (IDOR).
+    crate::auth::middleware::require_roles(&user, &[Role::Admin, Role::Staff, Role::Teacher])?;
     let activity = am::find_activity(&state.pool, id)
         .await?
         .ok_or(AppError::NotFound)?;

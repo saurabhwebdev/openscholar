@@ -222,9 +222,12 @@ async fn delete_attachment(
 
 async fn download(
     State(state): State<AppState>,
-    Extension(_user): Extension<CurrentUser>,
+    Extension(user): Extension<CurrentUser>,
     Path(id): Path<i64>,
 ) -> Result<Response, AppError> {
+    // Only staff-side roles may download; the handler is otherwise an IDOR over
+    // sequential ids (any logged-in user could enumerate every student's docs).
+    require_roles(&user, &[Role::Admin, Role::Staff])?;
     let row = attachment::find(&state.pool, id)
         .await?
         .ok_or(AppError::NotFound)?;
@@ -234,7 +237,14 @@ async fn download(
         .content_type
         .clone()
         .unwrap_or_else(|| "application/octet-stream".to_string());
-    let disposition = format!("attachment; filename=\"{}\"", row.filename.replace('"', ""));
+    // Strip quotes and control chars so the filename can't break the header
+    // (CRLF would otherwise 500 the download).
+    let safe_name: String = row
+        .filename
+        .chars()
+        .filter(|c| *c != '"' && !c.is_control())
+        .collect();
+    let disposition = format!("attachment; filename=\"{safe_name}\"");
     Ok((
         StatusCode::OK,
         [

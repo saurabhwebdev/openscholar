@@ -11,9 +11,31 @@ use crate::models::user::{find_session_user, CurrentUser, Role};
 use crate::state::AppState;
 use crate::util;
 
-/// Gate that redirects anonymous/expired sessions to `/login?next=...`.
-fn api_token() -> String {
-    std::env::var("API_TOKEN").unwrap_or_else(|_| "dev-api-token".to_string())
+/// The published dev default token. A deployment that leaves `API_TOKEN` at this
+/// value (or unset/empty) gets the REST bearer path DISABLED — fail-closed — so a
+/// forgotten config can never ship a publicly-known admin credential.
+pub const DEV_API_TOKEN: &str = "dev-api-token";
+
+/// The configured REST API bearer token, or `None` when the bearer path is
+/// disabled. Unset, empty/blank, or equal to [`DEV_API_TOKEN`] all disable it.
+pub fn configured_api_token() -> Option<String> {
+    match std::env::var("API_TOKEN") {
+        Ok(t) if !t.trim().is_empty() && t.trim() != DEV_API_TOKEN => Some(t.trim().to_string()),
+        _ => None,
+    }
+}
+
+/// Constant-time byte comparison so the bearer secret can't be recovered via a
+/// timing side-channel. Avoids an extra crate dependency.
+fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
 }
 
 pub async fn require_auth(state: State<AppState>, req: Request, next: Next) -> Response {
@@ -38,12 +60,18 @@ pub async fn require_auth(state: State<AppState>, req: Request, next: Next) -> R
         None => None,
     };
 
-    // Bearer token fallback for the REST API.
-    if user.is_none() {
-        if let Some(auth) = req.headers().get(AUTHORIZATION) {
+    // Bearer-token fallback for the REST API. Restricted to `/api/` routes so a
+    // service token can never reach HTML pages carrying student PII (welfare,
+    // medical, etc.); those require a real staff session. Disabled entirely
+    // unless a non-default `API_TOKEN` is configured (see configured_api_token).
+    if user.is_none() && is_api {
+        if let (Some(auth), Some(expected)) =
+            (req.headers().get(AUTHORIZATION), configured_api_token())
+        {
             if let Ok(s) = auth.to_str() {
                 if let Some(tok) = s.strip_prefix("Bearer ") {
-                    if tok.trim() == api_token() {
+                    let tok = tok.trim();
+                    if !tok.is_empty() && constant_time_eq(tok.as_bytes(), expected.as_bytes()) {
                         user = Some(CurrentUser {
                             id: 0,
                             email: "api@openscholar".to_string(),

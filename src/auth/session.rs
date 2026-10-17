@@ -15,15 +15,19 @@ pub fn default_expiry() -> DateTime<Utc> {
     Utc::now() + Duration::days(SESSION_TTL_DAYS)
 }
 
-pub fn set_cookie_header(session_id: Uuid) -> String {
+pub fn set_cookie_header(session_id: Uuid, secure: bool) -> String {
     format!(
-        "{SESSION_COOKIE}={session_id}; Path=/; HttpOnly; SameSite=Lax; Max-Age={}",
-        SESSION_TTL_DAYS * 24 * 3600
+        "{SESSION_COOKIE}={session_id}; Path=/; HttpOnly; SameSite=Lax; Max-Age={}{}",
+        SESSION_TTL_DAYS * 24 * 3600,
+        if secure { "; Secure" } else { "" }
     )
 }
 
-pub fn clear_cookie_header() -> String {
-    format!("{SESSION_COOKIE}=deleted; Path=/; HttpOnly; SameSite=Lax; Max-Age=0")
+pub fn clear_cookie_header(secure: bool) -> String {
+    format!(
+        "{SESSION_COOKIE}=deleted; Path=/; HttpOnly; SameSite=Lax; Max-Age=0{}",
+        if secure { "; Secure" } else { "" }
+    )
 }
 
 pub fn session_id_from_cookie_header(header: &str) -> Option<Uuid> {
@@ -76,13 +80,23 @@ mod tests {
     #[test]
     fn cookie_headers_round_trip() {
         let id = new_session_id();
-        let set = set_cookie_header(id);
+        let set = set_cookie_header(id, true);
         assert!(set.contains(&format!("{SESSION_COOKIE}={id}")));
         assert!(set.contains("HttpOnly"));
         assert!(set.contains("SameSite=Lax"));
+        assert!(set.contains("Secure"));
 
         let header = format!("other=1; {set}");
         assert_eq!(session_id_from_cookie_header(&header), Some(id));
+    }
+
+    #[test]
+    fn secure_flag_is_toggleable() {
+        let id = new_session_id();
+        assert!(set_cookie_header(id, true).contains("; Secure"));
+        assert!(!set_cookie_header(id, false).contains("Secure"));
+        assert!(clear_cookie_header(true).contains("; Secure"));
+        assert!(!clear_cookie_header(false).contains("Secure"));
     }
 
     #[test]
@@ -94,7 +108,7 @@ mod tests {
 
     #[test]
     fn clear_cookie_expires_immediately() {
-        let clear = clear_cookie_header();
+        let clear = clear_cookie_header(true);
         assert!(clear.contains("Max-Age=0"));
     }
 }
