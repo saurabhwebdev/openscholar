@@ -179,7 +179,18 @@ async fn create_route(
     } else {
         form.vehicle_id.trim().parse::<i64>().ok()
     };
-    let fee_cents: i64 = form.fee_cents.trim().parse().unwrap_or(0);
+    // Fee is entered in dollars (e.g. "15" or "15.00"); 0/blank means a free route.
+    let raw_fee = form.fee_cents.trim();
+    let fee_cents: i64 = if raw_fee.is_empty() {
+        0
+    } else {
+        match crate::models::fees::parse_amount_cents(raw_fee) {
+            Ok(c) => c,
+            // parse_amount_cents rejects 0; treat an explicit zero as a free route.
+            Err(_) if raw_fee.chars().all(|c| c == '0' || c == '.' || c == ',') => 0,
+            Err(msg) => return Ok(back_to("/transport", &msg).into_response()),
+        }
+    };
     let input = RouteInput {
         name: form.name.clone(),
         vehicle_id,

@@ -123,7 +123,7 @@
         <td>{{ r.name }}</td>
         <td>{% if let Some(v) = r.vehicle_reg %}{{ v }}{% else %}—{% endif %}</td>
         <td>{% if let Some(s) = r.stop_name %}{{ s }}{% else %}—{% endif %}</td>
-        <td style="text-align:right">{{ r.fee_cents }}</td>
+        <td style="text-align:right">{{ r.fee() }}</td>
       </tr>
       {% endfor %}
     </tbody>

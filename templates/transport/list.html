@@ -96,7 +96,7 @@
       <tr>
         <td><a class="btn-ghost" href="/transport-routes/{{ r.id }}/stops">{{ r.name }}</a></td>
         <td>{% if let Some(v) = r.vehicle_reg %}{{ v }}{% else %}—{% endif %}</td>
-        <td>{{ r.fee_cents }}</td>
+        <td>{{ r.fee() }}</td>
         <td>{{ r.riders_count }}</td>
         <td style="text-align:right">
           <form method="post" action="/transport-routes/{{ r.id }}/delete" onsubmit="return confirm('Delete route {{ r.name }}?')">
@@ -124,8 +124,8 @@
       </select>
     </div>
     <div>
-      <label class="label" for="fee_cents">Fee (cents)</label>
-      <input class="input" id="fee_cents" name="fee_cents" type="number" min="0" value="0">
+      <label class="label" for="fee_cents">Fee (e.g. 15.00)</label>
+      <input class="input" id="fee_cents" name="fee_cents" type="text" inputmode="decimal" value="0">
     </div>
     <div class="sm:col-span-2">
       <button class="btn-primary" type="submit">Add route</button>

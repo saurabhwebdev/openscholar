@@ -222,6 +222,66 @@ pub async fn create_applicant(
     Ok(row)
 }
 
+/// Atomically turn an accepted applicant into a student: locks the applicant
+/// row, verifies it is still `accepted` (so two concurrent enrols — or a retry
+/// after a half-failure — can't create a second student), inserts the student,
+/// and flips the applicant to `enrolled`, all in one transaction.
+pub async fn enroll_applicant(
+    pool: &PgPool,
+    applicant_id: i64,
+    input: &crate::models::student::StudentInput,
+) -> Result<i64, AppError> {
+    let mut tx = pool.begin().await?;
+    let status: Option<String> =
+        sqlx::query_scalar("SELECT status FROM applicants WHERE id = $1 FOR UPDATE")
+            .bind(applicant_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+    match status {
+        None => return Err(AppError::NotFound),
+        Some(s) if s != "accepted" => {
+            return Err(AppError::BadRequest(
+                "Only accepted applicants can be enrolled".to_string(),
+            ));
+        }
+        Some(_) => {}
+    }
+    // Mirrors student::create_student's INSERT (kept here so it shares the tx).
+    let student_id = sqlx::query_scalar::<_, i64>(
+        "INSERT INTO students (admission_no, first_name, last_name, date_of_birth, gender, guardian_name, guardian_phone, guardian_email, address, status, enrolled_on)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         RETURNING id",
+    )
+    .bind(input.admission_no.trim())
+    .bind(input.first_name.trim())
+    .bind(input.last_name.trim())
+    .bind(input.date_of_birth)
+    .bind(input.gender.clone())
+    .bind(input.guardian_name.clone())
+    .bind(input.guardian_phone.clone())
+    .bind(input.guardian_email.clone())
+    .bind(input.address.clone())
+    .bind(input.status.trim())
+    .bind(input.enrolled_on)
+    .fetch_one(&mut *tx)
+    .await;
+    let student_id = match student_id {
+        Ok(id) => id,
+        Err(sqlx::Error::Database(db)) if db.code().as_deref() == Some("23505") => {
+            return Err(AppError::BadRequest(
+                "That admission number is already taken".to_string(),
+            ));
+        }
+        Err(e) => return Err(AppError::Db(e)),
+    };
+    sqlx::query("UPDATE applicants SET status = 'enrolled' WHERE id = $1")
+        .bind(applicant_id)
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await?;
+    Ok(student_id)
+}
+
 pub async fn update_applicant_status(
     pool: &PgPool,
     id: i64,

@@ -711,18 +711,29 @@ where
         return Err(AppError::BadRequest("Invalid leave status".to_string()));
     }
     let ab = approved_by.to_option();
-    // For pending, clear approved_by? keep provided.
-    let row = sqlx::query_as::<_, LeaveRequestRow>(
+    // Only a pending request may be approved or rejected — never re-decide,
+    // flip an already-approved request, or approve a rejected one.
+    let guard_pending = matches!(st, "approved" | "rejected");
+    let sql = if guard_pending {
+        "UPDATE leave_requests SET status = $1, approved_by = $2 WHERE id = $3 AND status = 'pending' \
+         RETURNING id, staff_id, leave_type, start_date, end_date, reason, status, approved_by, created_at"
+    } else {
         "UPDATE leave_requests SET status = $1, approved_by = $2 WHERE id = $3 \
-         RETURNING id, staff_id, leave_type, start_date, end_date, reason, status, approved_by, created_at",
-    )
-    .bind(st)
-    .bind(ab)
-    .bind(id)
-    .fetch_optional(pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
-    Ok(row)
+         RETURNING id, staff_id, leave_type, start_date, end_date, reason, status, approved_by, created_at"
+    };
+    let row = sqlx::query_as::<_, LeaveRequestRow>(sql)
+        .bind(st)
+        .bind(ab)
+        .bind(id)
+        .fetch_optional(pool)
+        .await?;
+    match row {
+        Some(r) => Ok(r),
+        None if guard_pending => Err(AppError::BadRequest(
+            "Leave request is not pending (already approved or rejected)".to_string(),
+        )),
+        None => Err(AppError::NotFound),
+    }
 }
 
 pub async fn set_leave_status<A>(
@@ -827,8 +838,16 @@ where
     .bind(net)
     .bind(paid)
     .fetch_one(pool)
-    .await?;
-    Ok(row)
+    .await;
+    match row {
+        Ok(r) => Ok(r),
+        Err(sqlx::Error::Database(db)) if db.code().as_deref() == Some("23505") => {
+            Err(AppError::BadRequest(
+                "Payroll already recorded for this staff member and period".to_string(),
+            ))
+        }
+        Err(e) => Err(AppError::Db(e)),
+    }
 }
 
 pub async fn add_payroll(

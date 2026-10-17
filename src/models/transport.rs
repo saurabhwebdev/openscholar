@@ -43,6 +43,14 @@ pub struct RouteRow {
     pub vehicle_capacity: Option<i32>,
 }
 
+impl RouteRow {
+    /// Route fee formatted as currency (e.g. `5.00`), for templates. The raw
+    /// `fee_cents` must never be rendered directly — it would show `500`.
+    pub fn fee(&self) -> String {
+        crate::util::format_cents(self.fee_cents)
+    }
+}
+
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct StopRow {
     pub id: i64,
@@ -511,17 +519,59 @@ pub async fn add_rider(pool: &PgPool, input: &RiderInput) -> Result<RiderRow, Ap
     if let Err(msg) = validate_rider(input.student_id, input.route_id) {
         return Err(AppError::BadRequest(msg));
     }
-    // duplicate check
+    // Lock the route row so the capacity check and the insert are serialized —
+    // two concurrent assignments can't both slip past a full bus.
+    let mut tx = pool.begin().await?;
+    let vehicle_cap: Option<Option<i32>> =
+        sqlx::query_scalar("SELECT v.capacity FROM transport_routes r LEFT JOIN vehicles v ON v.id = r.vehicle_id WHERE r.id = $1 FOR UPDATE OF r")
+            .bind(input.route_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+    // Route must exist; `None` capacity = no vehicle assigned = uncapped.
+    let cap = vehicle_cap.ok_or_else(|| AppError::BadRequest("Route not found".to_string()))?;
+
+    // Duplicate (same student already on this route).
     let dup: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM transport_riders WHERE student_id = $1 AND route_id = $2)",
     )
     .bind(input.student_id)
     .bind(input.route_id)
-    .fetch_one(pool)
+    .fetch_one(&mut *tx)
     .await?;
     if dup {
         return Err(AppError::BadRequest("Student already on this route".to_string()));
     }
+
+    // Enforce vehicle capacity when a vehicle (with a capacity) is assigned.
+    if let Some(cap) = cap {
+        let count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM transport_riders WHERE route_id = $1")
+                .bind(input.route_id)
+                .fetch_one(&mut *tx)
+                .await?;
+        if count >= cap as i64 {
+            return Err(AppError::BadRequest(
+                "Route is at vehicle capacity".to_string(),
+            ));
+        }
+    }
+
+    // A chosen stop must belong to this route.
+    if let Some(stop_id) = input.stop_id {
+        let ok: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM transport_stops WHERE id = $1 AND route_id = $2)",
+        )
+        .bind(stop_id)
+        .bind(input.route_id)
+        .fetch_one(&mut *tx)
+        .await?;
+        if !ok {
+            return Err(AppError::BadRequest(
+                "Stop does not belong to this route".to_string(),
+            ));
+        }
+    }
+
     let row = sqlx::query_as::<_, RiderRow>(
         "INSERT INTO transport_riders (student_id, route_id, stop_id)
          VALUES ($1, $2, $3)
@@ -530,14 +580,20 @@ pub async fn add_rider(pool: &PgPool, input: &RiderInput) -> Result<RiderRow, Ap
     .bind(input.student_id)
     .bind(input.route_id)
     .bind(input.stop_id)
-    .fetch_one(pool)
+    .fetch_one(&mut *tx)
     .await;
     match row {
-        Ok(r) => Ok(r),
+        Ok(r) => {
+            tx.commit().await?;
+            Ok(r)
+        }
         Err(e) => {
             let app = AppError::Db(e);
             if is_duplicate_rider(&app) {
                 Err(AppError::BadRequest("Student already on this route".to_string()))
+            } else if matches!(&app, AppError::Db(sqlx::Error::Database(db)) if db.code().as_deref() == Some("23503"))
+            {
+                Err(AppError::BadRequest("Student or route not found".to_string()))
             } else {
                 Err(app)
             }

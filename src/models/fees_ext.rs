@@ -366,6 +366,25 @@ pub async fn apply_discount_to_invoice(
     let base = amount + prev_discount;
     let new_discount = discount_cents.clamp(0, base);
     let new_amount = (base - new_discount).max(0);
+    // Don't let a discount push the invoice below what the family has already
+    // paid (which would create an untracked negative balance / hidden credit).
+    let paid: i64 = sqlx::query_scalar(
+        "SELECT (COALESCE(SUM(amount_cents), 0))::BIGINT FROM payments WHERE invoice_id = $1",
+    )
+    .bind(invoice_id)
+    .fetch_one(pool)
+    .await?;
+    let fines: i64 = sqlx::query_scalar(
+        "SELECT (COALESCE(SUM(amount_cents), 0))::BIGINT FROM fee_fines WHERE invoice_id = $1",
+    )
+    .bind(invoice_id)
+    .fetch_one(pool)
+    .await?;
+    if new_amount + fines < paid {
+        return Err(AppError::BadRequest(
+            "Discount would drop the invoice below the amount already paid; refund or adjust payments first".to_string(),
+        ));
+    }
     sqlx::query("UPDATE invoices SET amount_cents = $2, discount_cents = $3 WHERE id = $1")
         .bind(invoice_id)
         .bind(new_amount)
@@ -388,7 +407,10 @@ pub async fn apply_discount_to_invoice_percent(
     .await?;
     let (amount, prev_discount) = row.ok_or(AppError::NotFound)?;
     let base = amount + prev_discount;
-    let discount = ((base as f64) * percent / 100.0).round() as i64;
+    // Integer money math: treat percent as basis points (hundredths of a
+    // percent) so the cents multiplication never goes through f64.
+    let percent_bp = (percent * 100.0).round().clamp(0.0, 10_000.0) as i64;
+    let discount = (((base as i128) * (percent_bp as i128) + 5_000) / 10_000) as i64;
     apply_discount_to_invoice(pool, invoice_id, discount).await
 }
 

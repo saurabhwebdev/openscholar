@@ -533,7 +533,30 @@ async fn delete_student(
     Extension(user): Extension<CurrentUser>,
     Path(id): Path<i64>,
 ) -> Result<Response, AppError> {
-    require_roles(&user, &[Role::Admin, Role::Staff])?;
+    // Admin-only: deleting a student cascades (and destroys) their invoices,
+    // payments, receipts and grades.
+    require_roles(&user, &[Role::Admin])?;
+    // Refuse a hard delete when financial/academic history exists — that data
+    // would be irreversibly cascaded away. Archiving (status=inactive) is the
+    // supported way to remove a student who has records.
+    let history: i64 = sqlx::query_scalar(
+        "SELECT ((SELECT COUNT(*) FROM invoices WHERE student_id = $1)
+               + (SELECT COUNT(*) FROM grades WHERE student_id = $1)
+               + (SELECT COUNT(*) FROM payments p JOIN invoices i ON i.id = p.invoice_id
+                  WHERE i.student_id = $1))::BIGINT",
+    )
+    .bind(id)
+    .fetch_one(&state.pool)
+    .await?;
+    if history > 0 {
+        return Ok(Redirect::to(&format!(
+            "/students/{id}?flash={}&flash_kind=error",
+            util::url_encode(
+                "This student has billing or academic records. Set their status to inactive to archive instead of deleting."
+            )
+        ))
+        .into_response());
+    }
     let done = sqlx::query(DELETE_SQL)
         .bind(id)
         .execute(&state.pool)

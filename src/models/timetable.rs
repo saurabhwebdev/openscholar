@@ -374,6 +374,25 @@ pub async fn save_slot(
             )));
         }
     }
+    // Reject booking a room that is already occupied in the same period.
+    if let Some(r) = room {
+        let r = r.trim();
+        if !r.is_empty() {
+            let room_clash: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM slots
+                  WHERE period_id = $1 AND room IS NOT NULL AND lower(trim(room)) = lower($2))",
+            )
+            .bind(period_id)
+            .bind(r)
+            .fetch_one(pool)
+            .await?;
+            if room_clash {
+                return Err(AppError::BadRequest(format!(
+                    "Room {r} is already booked in this period"
+                )));
+            }
+        }
+    }
     let id = sqlx::query_scalar::<_, i64>(
         "INSERT INTO slots (class_id, subject_id, period_id, teacher_id, room)
           VALUES ($1, $2, $3, $4, NULLIF(trim($5), ''))

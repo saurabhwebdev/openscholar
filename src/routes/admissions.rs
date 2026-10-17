@@ -17,7 +17,7 @@ use crate::models::admission::{
     list_by_status, next_statuses, update_applicant_status, validate_applicant,
     ApplicantInput, ApplicantView, ALLOWED_STATUSES,
 };
-use crate::models::student::{create_student, is_duplicate_admission, StudentInput};
+use crate::models::student::StudentInput;
 use crate::models::user::{CurrentUser, Role};
 use crate::state::AppState;
 use crate::util;
@@ -431,16 +431,9 @@ async fn enroll(
         status: "active".to_string(),
         enrolled_on: chrono::Local::now().date_naive(),
     };
-    match create_student(&state.pool, &input).await {
-        Ok(student) => {
-            update_applicant_status(&state.pool, id, "enrolled").await?;
-            Ok(Redirect::to(&format!("/students/{}", student.id)).into_response())
-        }
-        Err(e) if is_duplicate_admission(&e) => Ok(back_to_form(
-            &enroll_url,
-            "That admission number is already taken",
-        )
-        .into_response()),
+    match crate::models::admission::enroll_applicant(&state.pool, id, &input).await {
+        Ok(student_id) => Ok(Redirect::to(&format!("/students/{student_id}")).into_response()),
+        Err(AppError::BadRequest(msg)) => Ok(back_to_form(&enroll_url, &msg).into_response()),
         Err(e) => Err(e),
     }
 }

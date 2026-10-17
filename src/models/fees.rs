@@ -44,6 +44,9 @@ pub struct OutstandingRow {
     pub admission_no: String,
     pub amount_cents: i64,
     pub paid: i64,
+    /// Sum of fines levied on this invoice (added to what is owed).
+    pub fines: i64,
+    /// `amount_cents + fines - paid`.
     pub balance: i64,
     pub due_date: NaiveDate,
     pub category_id: Option<i64>,
@@ -110,6 +113,7 @@ pub struct InvoiceView {
     pub admission_no: String,
     pub amount: String,
     pub paid: String,
+    pub fines: String,
     pub balance: String,
     pub status: &'static str,
     pub due: String,
@@ -125,6 +129,7 @@ pub fn to_view(row: &OutstandingRow, today: NaiveDate) -> InvoiceView {
         admission_no: row.admission_no.clone(),
         amount: util::format_cents(row.amount_cents),
         paid: util::format_cents(row.paid),
+        fines: util::format_cents(row.fines),
         balance: util::format_cents(row.balance),
         status: invoice_status(row.balance, row.paid, row.due_date, today),
         due: row.due_date.to_string(),
@@ -261,7 +266,8 @@ pub async fn outstanding_invoices(
                 s.admission_no AS admission_no,
                 i.amount_cents AS amount_cents,
                 (COALESCE(SUM(p.amount_cents), 0))::BIGINT AS paid,
-                (i.amount_cents - COALESCE(SUM(p.amount_cents), 0))::BIGINT AS balance,
+                (COALESCE((SELECT SUM(f.amount_cents) FROM fee_fines f WHERE f.invoice_id = i.id), 0))::BIGINT AS fines,
+                (i.amount_cents + COALESCE((SELECT SUM(f.amount_cents) FROM fee_fines f WHERE f.invoice_id = i.id), 0) - COALESCE(SUM(p.amount_cents), 0))::BIGINT AS balance,
                 i.due_date AS due_date,
                 i.category_id AS category_id,
                 i.discount_cents AS discount_cents
@@ -276,7 +282,7 @@ pub async fn outstanding_invoices(
                 OR (s.first_name || ' ' || s.last_name) ILIKE '%' || $1 || '%')
          GROUP BY i.id, i.student_id, i.title, s.first_name, s.last_name,
                   s.admission_no, i.amount_cents, i.due_date, i.category_id, i.discount_cents
-         HAVING (i.amount_cents - COALESCE(SUM(p.amount_cents), 0)) > 0
+         HAVING (i.amount_cents + COALESCE((SELECT SUM(f.amount_cents) FROM fee_fines f WHERE f.invoice_id = i.id), 0) - COALESCE(SUM(p.amount_cents), 0)) > 0
          ORDER BY i.due_date ASC, i.id ASC
          LIMIT 200",
     )
@@ -299,7 +305,8 @@ pub async fn outstanding_invoices_filtered(
                 s.admission_no AS admission_no,
                 i.amount_cents AS amount_cents,
                 (COALESCE(SUM(p.amount_cents), 0))::BIGINT AS paid,
-                (i.amount_cents - COALESCE(SUM(p.amount_cents), 0))::BIGINT AS balance,
+                (COALESCE((SELECT SUM(f.amount_cents) FROM fee_fines f WHERE f.invoice_id = i.id), 0))::BIGINT AS fines,
+                (i.amount_cents + COALESCE((SELECT SUM(f.amount_cents) FROM fee_fines f WHERE f.invoice_id = i.id), 0) - COALESCE(SUM(p.amount_cents), 0))::BIGINT AS balance,
                 i.due_date AS due_date,
                 i.category_id AS category_id,
                 i.discount_cents AS discount_cents
@@ -315,7 +322,7 @@ pub async fn outstanding_invoices_filtered(
            AND ($2::BIGINT IS NULL OR i.category_id = $2)
          GROUP BY i.id, i.student_id, i.title, s.first_name, s.last_name,
                   s.admission_no, i.amount_cents, i.due_date, i.category_id, i.discount_cents
-         HAVING (i.amount_cents - COALESCE(SUM(p.amount_cents), 0)) > 0
+         HAVING (i.amount_cents + COALESCE((SELECT SUM(f.amount_cents) FROM fee_fines f WHERE f.invoice_id = i.id), 0) - COALESCE(SUM(p.amount_cents), 0)) > 0
          ORDER BY i.due_date ASC, i.id ASC
          LIMIT 200",
     )
@@ -375,7 +382,8 @@ pub async fn invoice_detail(
                 s.admission_no AS admission_no,
                 i.amount_cents AS amount_cents,
                 (COALESCE(SUM(p.amount_cents), 0))::BIGINT AS paid,
-                (i.amount_cents - COALESCE(SUM(p.amount_cents), 0))::BIGINT AS balance,
+                (COALESCE((SELECT SUM(f.amount_cents) FROM fee_fines f WHERE f.invoice_id = i.id), 0))::BIGINT AS fines,
+                (i.amount_cents + COALESCE((SELECT SUM(f.amount_cents) FROM fee_fines f WHERE f.invoice_id = i.id), 0) - COALESCE(SUM(p.amount_cents), 0))::BIGINT AS balance,
                 i.due_date AS due_date,
                 i.category_id AS category_id,
                 i.discount_cents AS discount_cents
@@ -420,19 +428,26 @@ pub async fn record_payment(
     if !ALLOWED_METHODS.contains(&method) {
         return Err(AppError::BadRequest("Unknown payment method".to_string()));
     }
-    let totals: Option<OutstandingBalance> = sqlx::query_as::<_, OutstandingBalance>(
-        "SELECT i.amount_cents AS amount_cents,
-                (COALESCE(SUM(p.amount_cents), 0))::BIGINT AS paid
-         FROM invoices i
-         LEFT JOIN payments p ON p.invoice_id = i.id
-         WHERE i.id = $1
-         GROUP BY i.id, i.amount_cents",
-    )
-    .bind(invoice_id)
-    .fetch_optional(pool)
-    .await?;
-    let totals = totals.ok_or(AppError::NotFound)?;
-    let balance = totals.amount_cents - totals.paid;
+    // Lock the invoice row and recompute the balance inside one transaction so
+    // two concurrent "record payment" clicks can't both pass the check and
+    // overpay the invoice into a negative balance.
+    let mut tx = pool.begin().await?;
+    let locked: Option<(i64,)> = sqlx::query_as("SELECT amount_cents FROM invoices WHERE id = $1 FOR UPDATE")
+        .bind(invoice_id)
+        .fetch_optional(&mut *tx)
+        .await?;
+    let amount_owed = locked.ok_or(AppError::NotFound)?.0;
+    let paid: i64 =
+        sqlx::query_scalar("SELECT (COALESCE(SUM(amount_cents), 0))::BIGINT FROM payments WHERE invoice_id = $1")
+            .bind(invoice_id)
+            .fetch_one(&mut *tx)
+            .await?;
+    let fines: i64 =
+        sqlx::query_scalar("SELECT (COALESCE(SUM(amount_cents), 0))::BIGINT FROM fee_fines WHERE invoice_id = $1")
+            .bind(invoice_id)
+            .fetch_one(&mut *tx)
+            .await?;
+    let balance = amount_owed + fines - paid;
     if amount_cents > balance {
         return Err(AppError::BadRequest(
             "Payment exceeds outstanding balance".to_string(),
@@ -452,15 +467,10 @@ pub async fn record_payment(
     .bind(method)
     .bind(reference)
     .bind(recorded_by)
-    .fetch_one(pool)
+    .fetch_one(&mut *tx)
     .await?;
+    tx.commit().await?;
     Ok(row)
-}
-
-#[derive(Debug, sqlx::FromRow)]
-struct OutstandingBalance {
-    amount_cents: i64,
-    paid: i64,
 }
 
 /// Delete an invoice by id. Payments cascade via the FK, but callers must
@@ -481,7 +491,10 @@ pub async fn student_totals(
 ) -> Result<StudentTotals, AppError> {
     let raw = sqlx::query_as::<_, StudentTotalsRaw>(
         "SELECT
-            (COALESCE((SELECT SUM(amount_cents) FROM invoices WHERE student_id = $1), 0))::BIGINT AS billed,
+            (COALESCE((SELECT SUM(amount_cents) FROM invoices WHERE student_id = $1), 0)
+             + COALESCE((SELECT SUM(f.amount_cents) FROM fee_fines f
+                         JOIN invoices i ON i.id = f.invoice_id
+                         WHERE i.student_id = $1), 0))::BIGINT AS billed,
             (COALESCE((SELECT SUM(p.amount_cents) FROM payments p
                        JOIN invoices i ON i.id = p.invoice_id
                        WHERE i.student_id = $1), 0))::BIGINT AS paid",
