@@ -3,14 +3,16 @@
 {% block title %}Welfare — OpenScholar{% endblock %}
 
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-4">
+<nav class="breadcrumb">
+  <a href="/students/{{ student.id }}">{{ student.full_name }}</a>
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+  <span>Welfare</span>
+</nav>
+
+<div class="flex flex-wrap items-end justify-between gap-4 mt-3">
   <div>
-    <p class="eyebrow">Manage · Students · {{ student.admission_no }}</p>
-    <h1 class="page-title mt-2">{{ student.full_name }} — Welfare</h1>
-    <p class="page-sub">Behavior incidents and medical records</p>
-  </div>
-  <div class="flex flex-wrap items-center gap-3">
-    <a class="btn-secondary" href="/students/{{ student.id }}">Back to student</a>
+    <h1 class="page-title">Welfare</h1>
+    <p class="page-sub">{{ student.admission_no }} · Behavior incidents and medical records</p>
   </div>
 </div>
 
@@ -19,68 +21,72 @@
 {% endif %}
 
 <div class="stat-grid mt-6">
-  <div class="card">
-    <div class="stat-value">{{ summary_minor }}</div>
+  <div class="stat-card card">
+    <div class="stat-value" style="color:var(--warn)">{{ summary_minor }}</div>
     <div class="stat-label">Minor incidents</div>
   </div>
-  <div class="card">
-    <div class="stat-value">{{ summary_major }}</div>
+  <div class="stat-card card">
+    <div class="stat-value" style="color:var(--err)">{{ summary_major }}</div>
     <div class="stat-label">Major incidents</div>
   </div>
-  <div class="card">
-    <div class="stat-value">{{ summary_positive }}</div>
+  <div class="stat-card card">
+    <div class="stat-value" style="color:var(--ok)">{{ summary_positive }}</div>
     <div class="stat-label">Positive notes</div>
   </div>
 </div>
 
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Behavior incidents</h2>
-    <span class="pill pill-info">{{ incidents.len() }}</span>
+<div class="mt-6">
+  <div class="flex items-center justify-between gap-4 mb-3">
+    <h2 class="section-title">Behavior incidents</h2>
+    <span class="pill pill-neutral">{{ incidents.len() }}</span>
   </div>
   {% if incidents.is_empty() %}
-  <div class="empty-state">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3Z"/></svg>
-    <h3>No incidents recorded</h3>
-    <p>Behavior incidents and positive notes will appear here.</p>
+  <div class="card">
+    <div class="empty-state">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3Z"/></svg>
+      <h3>No incidents recorded</h3>
+      <p>Behavior incidents and positive notes will appear here.</p>
+    </div>
   </div>
   {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Date</th><th>Kind</th><th>Category</th><th>Description</th><th>Action taken</th><th></th></tr></thead>
-    <tbody>
-      {% for inc in incidents %}
-      <tr>
-        <td>{{ inc.incident_date }}</td>
-        <td>
-          {% if inc.kind == "positive" %}<span class="pill pill-ok">Positive</span>
-          {% elif inc.kind == "major" %}<span class="pill pill-err">Major</span>
-          {% else %}<span class="pill pill-warn">Minor</span>{% endif %}
-        </td>
-        <td>{% if inc.category.is_empty() %}—{% else %}{{ inc.category }}{% endif %}</td>
-        <td>{{ inc.description }}</td>
-        <td>{% if inc.action_taken.is_empty() %}—{% else %}{{ inc.action_taken }}{% endif %}</td>
-        <td style="text-align:right">
-          {% if can_edit %}
-          <form method="post" action="/incidents/{{ inc.id }}/delete" onsubmit="return confirm('Delete this incident?')">
-            <button class="btn-ghost" type="submit">Delete</button>
-          </form>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Date</th><th>Kind</th><th>Category</th><th>Description</th><th>Action taken</th><th></th></tr></thead>
+      <tbody>
+        {% for inc in incidents %}
+        <tr>
+          <td>{{ inc.incident_date }}</td>
+          <td>
+            {% if inc.kind == "positive" %}<span class="pill pill-ok">Positive</span>
+            {% elif inc.kind == "major" %}<span class="pill pill-err">Major</span>
+            {% else %}<span class="pill pill-warn">Minor</span>{% endif %}
+          </td>
+          <td>{% if inc.category.is_empty() %}—{% else %}{{ inc.category }}{% endif %}</td>
+          <td>{{ inc.description }}</td>
+          <td class="text-secondary">{% if inc.action_taken.is_empty() %}—{% else %}{{ inc.action_taken }}{% endif %}</td>
+          <td class="text-right">
+            {% if can_edit %}
+            <form method="post" action="/incidents/{{ inc.id }}/delete" onsubmit="return confirm('Delete this incident?')">
+              <button class="btn-sm btn-danger" type="submit">Delete</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
 
   {% if can_edit %}
-  <div class="mt-6 pt-6" style="border-top:1px solid var(--border)">
-    <h3 class="text-sm font-semibold">Add incident</h3>
-    <form method="post" action="/students/{{ student.id }}/incidents" class="mt-4 grid gap-4 sm:grid-cols-2">
-      <div>
+  <div class="card mt-4">
+    <h2 class="section-title mb-4">Add incident</h2>
+    <form method="post" action="/students/{{ student.id }}/incidents" class="form-grid">
+      <div class="form-group">
         <label class="label" for="incident_date">Date</label>
         <input class="input" id="incident_date" name="incident_date" type="date">
       </div>
-      <div>
+      <div class="form-group">
         <label class="label" for="kind">Kind</label>
         <select class="input" id="kind" name="kind">
           <option value="minor">Minor</option>
@@ -88,19 +94,19 @@
           <option value="positive">Positive</option>
         </select>
       </div>
-      <div>
+      <div class="form-group">
         <label class="label" for="category">Category (optional)</label>
         <input class="input" id="category" name="category" type="text" maxlength="100" autocomplete="off">
       </div>
-      <div>
+      <div class="form-group">
         <label class="label" for="action_taken">Action taken (optional)</label>
         <input class="input" id="action_taken" name="action_taken" type="text" maxlength="255" autocomplete="off">
       </div>
-      <div class="sm:col-span-2">
+      <div class="form-group full-width">
         <label class="label" for="description">Description</label>
         <textarea class="input" id="description" name="description" rows="3" required></textarea>
       </div>
-      <div class="sm:col-span-2">
+      <div class="form-actions full-width">
         <button class="btn-primary" type="submit">Record incident</button>
       </div>
     </form>
@@ -108,49 +114,53 @@
   {% endif %}
 </div>
 
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Medical records</h2>
-    <span class="pill pill-info">{{ medicals.len() }}</span>
+<div class="mt-6">
+  <div class="flex items-center justify-between gap-4 mb-3">
+    <h2 class="section-title">Medical records</h2>
+    <span class="pill pill-neutral">{{ medicals.len() }}</span>
   </div>
   {% if medicals.is_empty() %}
-  <div class="empty-state">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M12 4v16m8-8H4"/></svg>
-    <h3>No medical records</h3>
-    <p>Immunizations, allergies, medications, conditions, and notes will appear here.</p>
+  <div class="card">
+    <div class="empty-state">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 4v16m8-8H4"/></svg>
+      <h3>No medical records</h3>
+      <p>Immunizations, allergies, medications, conditions, and notes will appear here.</p>
+    </div>
   </div>
   {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Date</th><th>Type</th><th>Title</th><th>Details</th><th></th></tr></thead>
-    <tbody>
-      {% for m in medicals %}
-      <tr>
-        <td>{{ m.recorded_on }}</td>
-        <td><span class="pill pill-info">{{ m.record_type }}</span></td>
-        <td>{{ m.title }}</td>
-        <td>{% if m.details.is_empty() %}—{% else %}{{ m.details }}{% endif %}</td>
-        <td style="text-align:right">
-          {% if can_edit %}
-          <form method="post" action="/medical/{{ m.id }}/delete" onsubmit="return confirm('Delete this medical record?')">
-            <button class="btn-ghost" type="submit">Delete</button>
-          </form>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Date</th><th>Type</th><th>Title</th><th>Details</th><th></th></tr></thead>
+      <tbody>
+        {% for m in medicals %}
+        <tr>
+          <td>{{ m.recorded_on }}</td>
+          <td><span class="pill pill-info">{{ m.record_type }}</span></td>
+          <td>{{ m.title }}</td>
+          <td class="text-secondary">{% if m.details.is_empty() %}—{% else %}{{ m.details }}{% endif %}</td>
+          <td class="text-right">
+            {% if can_edit %}
+            <form method="post" action="/medical/{{ m.id }}/delete" onsubmit="return confirm('Delete this medical record?')">
+              <button class="btn-sm btn-danger" type="submit">Delete</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
 
   {% if can_edit %}
-  <div class="mt-6 pt-6" style="border-top:1px solid var(--border)">
-    <h3 class="text-sm font-semibold">Add medical record</h3>
-    <form method="post" action="/students/{{ student.id }}/medical" class="mt-4 grid gap-4 sm:grid-cols-2">
-      <div>
+  <div class="card mt-4">
+    <h2 class="section-title mb-4">Add medical record</h2>
+    <form method="post" action="/students/{{ student.id }}/medical" class="form-grid">
+      <div class="form-group">
         <label class="label" for="recorded_on">Date</label>
         <input class="input" id="recorded_on" name="recorded_on" type="date">
       </div>
-      <div>
+      <div class="form-group">
         <label class="label" for="record_type">Type</label>
         <select class="input" id="record_type" name="record_type">
           <option value="note">Note</option>
@@ -160,15 +170,15 @@
           <option value="condition">Condition</option>
         </select>
       </div>
-      <div class="sm:col-span-2">
+      <div class="form-group full-width">
         <label class="label" for="title">Title</label>
         <input class="input" id="title" name="title" type="text" required maxlength="200" autocomplete="off">
       </div>
-      <div class="sm:col-span-2">
+      <div class="form-group full-width">
         <label class="label" for="details">Details (optional)</label>
         <textarea class="input" id="details" name="details" rows="3"></textarea>
       </div>
-      <div class="sm:col-span-2">
+      <div class="form-actions full-width">
         <button class="btn-primary" type="submit">Add record</button>
       </div>
     </form>

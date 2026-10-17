@@ -3,45 +3,70 @@
 {% block title %}{{ staff.full_name }} — Staff — OpenScholar{% endblock %}
 
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-4">
+<nav class="breadcrumb">
+  <a href="/staff">Staff</a>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+  <span>{{ staff.full_name }}</span>
+</nav>
+
+<div class="flex flex-wrap items-end justify-between gap-4 mt-2">
   <div>
-    <p class="eyebrow">Manage · Staff</p>
-    <h1 class="page-title mt-2">{{ staff.full_name }}</h1>
+    <h1 class="page-title">{{ staff.full_name }}</h1>
     <p class="page-sub">{{ staff.employee_no }} · {{ staff.job_title_display }}</p>
   </div>
-  <div class="flex items-center gap-2">
+  <div class="flex items-center gap-3">
     {% if staff.is_active %}<span class="pill pill-ok">Active</span>{% else %}<span class="pill pill-err">Inactive</span>{% endif %}
-    <a class="btn-secondary" href="/staff/{{ staff.id }}/edit">Edit</a>
+    <a class="btn-secondary btn-sm" href="/staff/{{ staff.id }}/edit">Edit</a>
   </div>
 </div>
 
-<div class="grid gap-4 mt-6 lg:grid-cols-2">
-  <div class="card">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Directory info</h2>
-    <dl class="mt-4 space-y-4 text-sm">
-      <div class="flex gap-3"><dt class="w-28 shrink-0 font-medium">Employee no</dt><dd style="color:var(--text-muted)">{{ staff.employee_no }}</dd></div>
-      <div class="flex gap-3"><dt class="w-28 shrink-0 font-medium">Email</dt><dd style="color:var(--text-muted)">{{ staff.email_display }}</dd></div>
-      <div class="flex gap-3"><dt class="w-28 shrink-0 font-medium">Phone</dt><dd style="color:var(--text-muted)">{{ staff.phone_display }}</dd></div>
-      <div class="flex gap-3"><dt class="w-28 shrink-0 font-medium">Job title</dt><dd style="color:var(--text-muted)">{{ staff.job_title_display }}</dd></div>
-      <div class="flex gap-3"><dt class="w-28 shrink-0 font-medium">Department</dt><dd style="color:var(--text-muted)">{{ staff.department_display }}</dd></div>
-      <div class="flex gap-3"><dt class="w-28 shrink-0 font-medium">Hired on</dt><dd style="color:var(--text-muted)">{{ staff.hired_on_display }}</dd></div>
-    </dl>
+<div class="detail-grid mt-6">
+  <div>
+    <div class="card">
+      <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Directory info</h2>
+      <dl class="mt-4">
+        <div class="detail-row"><dt>Employee no</dt><dd class="font-mono">{{ staff.employee_no }}</dd></div>
+        <div class="detail-row"><dt>Email</dt><dd>{{ staff.email_display }}</dd></div>
+        <div class="detail-row"><dt>Phone</dt><dd>{{ staff.phone_display }}</dd></div>
+        <div class="detail-row"><dt>Job title</dt><dd>{{ staff.job_title_display }}</dd></div>
+        <div class="detail-row"><dt>Department</dt><dd>{{ staff.department_display }}</dd></div>
+        <div class="detail-row"><dt>Hired on</dt><dd>{{ staff.hired_on_display }}</dd></div>
+      </dl>
+    </div>
+
+    <div class="card mt-4">
+      <div class="flex items-center justify-between gap-4">
+        <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">HR</h2>
+        <span class="pill pill-info">{{ hr_month }}</span>
+      </div>
+      <dl class="mt-4">
+        <div class="detail-row"><dt>Attendance</dt><dd>{{ hr_attendance }}</dd></div>
+        <div class="detail-row"><dt>Leave</dt><dd>{{ hr_leave }}</dd></div>
+        <div class="detail-row"><dt>Latest payroll</dt><dd>{{ hr_payroll }}</dd></div>
+      </dl>
+      <div class="mt-4">
+        <a class="btn-ghost btn-sm" href="/hr?staff_id={{ staff.id }}&month={{ hr_month }}">Open HR</a>
+      </div>
+    </div>
   </div>
-  <div class="card">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">User account</h2>
-    {% if let Some(u) = linked_user %}
-    <p class="text-sm mt-4" style="color:var(--text-muted)">This email is linked to a login account.</p>
-    <div class="mt-4 flex flex-wrap items-center gap-2">
-      <span class="font-medium text-sm">{{ u.full_name }}</span>
-      <span class="pill pill-info">{{ u.role }}</span>
+
+  <div>
+    <div class="card">
+      <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">User account</h2>
+      {% if let Some(u) = linked_user %}
+      <p class="text-sm mt-4" style="color:var(--text-muted)">This email is linked to a login account.</p>
+      <div class="mt-4 flex flex-wrap items-center gap-2">
+        <span class="font-medium text-sm">{{ u.full_name }}</span>
+        <span class="pill pill-info">{{ u.role }}</span>
+      </div>
+      <p class="text-sm mt-2" style="color:var(--text-muted)">{{ u.email }}</p>
+      {% else %}
+      <div class="empty-state" style="padding:24px 16px">
+        <h3>No linked account</h3>
+        <p>No login account uses this email address.</p>
+      </div>
+      {% endif %}
     </div>
-    <p class="text-sm mt-2" style="color:var(--text-muted)">{{ u.email }}</p>
-    {% else %}
-    <div class="empty-state" style="padding:32px 16px">
-      <h3>No linked account</h3>
-      <p>No login account uses this email address.</p>
-    </div>
-    {% endif %}
   </div>
 </div>
 
@@ -56,41 +81,30 @@
     <p>Classes where this staff member is the assigned teacher will appear here.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Class</th><th>Grade</th><th>Room</th><th>School year</th></tr></thead>
-    <tbody>
-      {% for c in classes %}
-      <tr>
-        <td><a href="/classes/{{ c.id }}">{{ c.name }}</a></td>
-        <td>{{ c.grade_level }}</td>
-        <td>{{ c.room }}</td>
-        <td>{{ c.school_year }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-wrap mt-4">
+    <table class="table">
+      <thead><tr><th>Class</th><th>Grade</th><th>Room</th><th>School year</th></tr></thead>
+      <tbody>
+        {% for c in classes %}
+        <tr>
+          <td><a class="rowlink" href="/classes/{{ c.id }}">{{ c.name }}</a></td>
+          <td>{{ c.grade_level }}</td>
+          <td>{{ c.room }}</td>
+          <td>{{ c.school_year }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
 </div>
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">HR</h2>
-    <span class="pill pill-info">{{ hr_month }}</span>
-  </div>
-  <dl class="mt-4 space-y-4 text-sm">
-    <div class="flex gap-3"><dt class="w-28 shrink-0 font-medium">Attendance</dt><dd style="color:var(--text-muted)">{{ hr_attendance }}</dd></div>
-    <div class="flex gap-3"><dt class="w-28 shrink-0 font-medium">Leave</dt><dd style="color:var(--text-muted)">{{ hr_leave }}</dd></div>
-    <div class="flex gap-3"><dt class="w-28 shrink-0 font-medium">Latest payroll</dt><dd style="color:var(--text-muted)">{{ hr_payroll }}</dd></div>
-  </dl>
-  <div class="mt-4">
-    <a class="btn-ghost" href="/hr?staff_id={{ staff.id }}&month={{ hr_month }}">Open HR</a>
-  </div>
-</div>
+
 {% if can_edit %}
-<div class="card mt-4" style="border-color:var(--err)">
+<div class="card mt-4" style="border-color:color-mix(in oklch, var(--err) 35%, transparent)">
   <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em;color:var(--err)">Danger zone</h2>
-  <p class="text-sm mt-2" style="color:var(--text-muted)">Deleting this staff member permanently removes the record. Classes they teach will be left unassigned.</p>
+  <p class="text-sm mt-2" style="color:var(--text-muted)">Permanently removes this staff member. Classes they teach will be left unassigned.</p>
   <form method="post" action="/staff/{{ staff.id }}/delete" class="mt-4" onsubmit="return confirm('Delete {{ staff.full_name }}? This cannot be undone.')">
-    <button class="btn-secondary" type="submit" style="border-color:var(--err);color:var(--err)">Delete staff</button>
+    <button class="btn-danger btn-sm" type="submit">Delete staff</button>
   </form>
 </div>
 {% endif %}

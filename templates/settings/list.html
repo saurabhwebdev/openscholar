@@ -15,37 +15,35 @@
 <div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
 {% endif %}
 
-<!-- School profile -->
 <div class="card mt-6">
-  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">School profile</h2>
+  <h2 class="section-title">School profile</h2>
   <p class="text-sm mt-1" style="color:var(--text-muted)">Basic information about your school.</p>
-  <form method="post" action="/settings/profile" class="mt-4 grid gap-4" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
-    <div>
+  <form method="post" action="/settings/profile" class="form-grid mt-4">
+    <div class="form-group">
       <label class="label" for="school_name">School name</label>
       <input class="input" id="school_name" name="school_name" value="{{ school_name }}" />
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="school_address">Address</label>
       <input class="input" id="school_address" name="school_address" value="{{ school_address }}" />
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="school_email">Email</label>
       <input class="input" id="school_email" name="school_email" value="{{ school_email }}" />
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="school_phone">Phone</label>
       <input class="input" id="school_phone" name="school_phone" value="{{ school_phone }}" />
     </div>
-    <div class="flex items-end">
+    <div class="form-group flex items-end">
       <button class="btn-primary" type="submit">Save profile</button>
     </div>
   </form>
 </div>
 
-<!-- Grading scales -->
-<div class="card mt-6">
+<div class="card mt-4">
   <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Grading scales</h2>
+    <h2 class="section-title">Grading scales</h2>
     <span class="pill pill-info">{{ scales.len() }} total</span>
   </div>
   {% if scales.is_empty() %}
@@ -54,58 +52,59 @@
     <p>Add a scale to convert scores to letter grades.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Name</th><th>Min</th><th>Max</th><th>Grade</th><th>Points</th><th></th></tr></thead>
+  <div class="table-wrap mt-4" style="border:none;box-shadow:none">
+  <table class="table">
+    <thead><tr><th>Name</th><th class="num">Min</th><th class="num">Max</th><th>Grade</th><th class="num">Points</th><th></th></tr></thead>
     <tbody>
       {% for s in scales %}
       <tr>
         <td>{{ s.name }}</td>
-        <td>{{ s.min_score }}</td>
-        <td>{{ s.max_score }}</td>
+        <td class="num">{{ s.min_score }}</td>
+        <td class="num">{{ s.max_score }}</td>
         <td>{{ s.grade }}</td>
-        <td>{% if let Some(p) = s.points %}{{ p }}{% else %}—{% endif %}</td>
+        <td class="num">{% if let Some(p) = s.points %}{{ p }}{% else %}—{% endif %}</td>
         <td style="text-align:right">
           <form method="post" action="/settings/scales/{{ s.id }}/delete" style="display:inline">
-            <button class="btn-ghost" type="submit">Delete</button>
+            <button class="btn-ghost btn-sm" type="submit" style="color:var(--err)">Delete</button>
           </form>
         </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% endif %}
 
-  <form method="post" action="/settings/scales" class="mt-4 grid gap-4" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
-    <div>
+  <form method="post" action="/settings/scales" class="form-grid mt-4">
+    <div class="form-group">
       <label class="label" for="sc_name">Name</label>
       <input class="input" id="sc_name" name="name" required />
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="sc_min">Min score</label>
       <input class="input" id="sc_min" name="min_score" type="number" step="0.01" required />
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="sc_max">Max score</label>
       <input class="input" id="sc_max" name="max_score" type="number" step="0.01" required />
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="sc_grade">Grade</label>
       <input class="input" id="sc_grade" name="grade" required />
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="sc_points">Points</label>
       <input class="input" id="sc_points" name="points" type="number" step="0.01" />
     </div>
-    <div class="flex items-end">
+    <div class="form-group flex items-end">
       <button class="btn-primary" type="submit">Add scale</button>
     </div>
   </form>
 </div>
 
-<!-- Semesters -->
-<div class="card mt-6">
+<div class="card mt-4">
   <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Semesters</h2>
+    <h2 class="section-title">Semesters</h2>
     <span class="pill pill-info">{{ semesters.len() }} total</span>
   </div>
   {% if semesters.is_empty() %}
@@ -114,7 +113,8 @@
     <p>Create a semester for a school year.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
+  <div class="table-wrap mt-4" style="border:none;box-shadow:none">
+  <table class="table">
     <thead><tr><th>School year</th><th>Name</th><th>Start</th><th>End</th><th>Status</th><th></th></tr></thead>
     <tbody>
       {% for s in semesters %}
@@ -128,23 +128,24 @@
           <span class="pill pill-ok">Current</span>
           {% else %}
           <form method="post" action="/settings/semesters/{{ s.id }}/set-current" style="display:inline">
-            <button class="btn-ghost" type="submit">Set current</button>
+            <button class="btn-ghost btn-sm" type="submit">Set current</button>
           </form>
           {% endif %}
         </td>
         <td style="text-align:right">
           <form method="post" action="/settings/semesters/{{ s.id }}/delete" style="display:inline">
-            <button class="btn-ghost" type="submit">Delete</button>
+            <button class="btn-ghost btn-sm" type="submit" style="color:var(--err)">Delete</button>
           </form>
         </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% endif %}
 
-  <form method="post" action="/settings/semesters" class="mt-4 grid gap-4" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
-    <div>
+  <form method="post" action="/settings/semesters" class="form-grid mt-4">
+    <div class="form-group">
       <label class="label" for="sem_year">School year</label>
       <select class="input" id="sem_year" name="school_year_id" required>
         {% for y in years %}
@@ -152,19 +153,19 @@
         {% endfor %}
       </select>
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="sem_name">Name</label>
       <input class="input" id="sem_name" name="name" required />
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="sem_start">Start date</label>
       <input class="input" id="sem_start" name="start_date" type="date" required />
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="sem_end">End date</label>
       <input class="input" id="sem_end" name="end_date" type="date" required />
     </div>
-    <div class="flex items-end gap-2">
+    <div class="form-group flex items-end gap-3">
       <label class="flex items-center gap-2 text-sm">
         <input type="checkbox" name="is_current" value="on" /> Current
       </label>
@@ -173,9 +174,8 @@
   </form>
 </div>
 
-<!-- Raw settings -->
-<div class="card mt-6">
-  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Raw settings</h2>
+<div class="card mt-4">
+  <h2 class="section-title">Raw settings</h2>
   <p class="text-sm mt-1" style="color:var(--text-muted)">Advanced key/value pairs.</p>
   {% if settings.is_empty() %}
   <div class="empty-state">
@@ -183,48 +183,50 @@
     <p>Add a key/value pair below.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
+  <div class="table-wrap mt-4" style="border:none;box-shadow:none">
+  <table class="table">
     <thead><tr><th>Key</th><th>Value</th><th>Updated</th></tr></thead>
     <tbody>
       {% for s in settings %}
       <tr>
-        <td>{{ s.key }}</td>
+        <td><code style="font-size:12px;padding:2px 6px;background:var(--surface-hover);border-radius:4px">{{ s.key }}</code></td>
         <td>{{ s.value }}</td>
         <td>{{ s.updated_at }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% endif %}
 
-  <form method="post" action="/settings/raw" class="mt-4 grid gap-4" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
-    <div>
+  <form method="post" action="/settings/raw" class="form-grid mt-4">
+    <div class="form-group">
       <label class="label" for="raw_key">Key</label>
       <input class="input" id="raw_key" name="key" required />
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="raw_value">Value</label>
       <input class="input" id="raw_value" name="value" />
     </div>
-    <div class="flex items-end">
+    <div class="form-group flex items-end">
       <button class="btn-primary" type="submit">Save setting</button>
     </div>
   </form>
 </div>
 
-<div class="card mt-6">
-  <h2 class="text-lg font-semibold mb-1">Change my password</h2>
-  <p class="text-sm text-muted mb-4">You'll stay signed in here; other devices will be signed out.</p>
-  <form method="post" action="/settings/password" class="grid gap-4 sm:grid-cols-3 items-end">
-    <div>
+<div class="card mt-4">
+  <h2 class="section-title">Change my password</h2>
+  <p class="text-sm mt-1" style="color:var(--text-muted)">You'll stay signed in here; other devices will be signed out.</p>
+  <form method="post" action="/settings/password" class="form-grid mt-4 items-end">
+    <div class="form-group">
       <label class="label" for="cur_pw">Current password</label>
       <input class="input" id="cur_pw" name="current_password" type="password" required />
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="new_pw">New password</label>
       <input class="input" id="new_pw" name="new_password" type="password" minlength="8" required />
     </div>
-    <div>
+    <div class="form-group">
       <button class="btn-primary" type="submit">Change password</button>
     </div>
   </form>

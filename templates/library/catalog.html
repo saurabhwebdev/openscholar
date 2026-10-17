@@ -5,7 +5,7 @@
 {% block content %}
 <div class="flex flex-wrap items-end justify-between gap-4">
   <div>
-    <p class="eyebrow">Manage · Library</p>
+    <p class="eyebrow">Manage</p>
     <h1 class="page-title mt-2">Library catalog</h1>
     <p class="page-sub">Search books, add new titles, borrow and return.</p>
   </div>
@@ -13,12 +13,12 @@
 </div>
 
 {% if let Some(msg) = flash %}
-<div class="{% if flash_kind == "error" %}flash-err{% else if flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
+<div class="{% if flash_kind == "error" %}flash-err{% else if flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-4" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
 {% endif %}
 
-<div class="card mt-6">
-  <form method="get" action="/library" class="flex flex-wrap items-end gap-4">
-    <div class="grow" style="min-width:220px">
+<div class="card mt-4">
+  <form method="get" action="/library" class="flex flex-wrap items-end gap-3">
+    <div class="grow" style="min-width:200px">
       <label class="label" for="q">Search</label>
       <input class="input" id="q" name="q" type="search" value="{{ q }}" placeholder="Title, author, ISBN, category" autocomplete="off">
     </div>
@@ -28,8 +28,8 @@
 
 {% if can_edit %}
 <div class="card mt-4">
-  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Add book</h2>
-  <form method="post" action="/books" class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  <h2 class="section-title">Add book</h2>
+  <form method="post" action="/books" class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
     <div>
       <label class="label" for="title">Title</label>
       <input class="input" id="title" name="title" type="text" required>
@@ -61,8 +61,8 @@
 </div>
 
 <div class="card mt-4">
-  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Borrow</h2>
-  <form method="post" action="/library/borrow" class="mt-4 grid gap-4 sm:grid-cols-3">
+  <h2 class="section-title">Borrow</h2>
+  <form method="post" action="/library/borrow" class="mt-3 grid gap-3 sm:grid-cols-3">
     <div>
       <label class="label" for="book_id">Book</label>
       <select class="input" id="book_id" name="book_id" required>
@@ -90,31 +90,39 @@
 </div>
 {% endif %}
 
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Catalog</h2>
-    <span class="pill pill-info">{{ books.len() }}</span>
+<div class="table-wrap mt-4">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+    <div class="flex items-center justify-between">
+      <span class="section-title">Catalog</span>
+      <span class="pill pill-info">{{ books.len() }} books</span>
+    </div>
   </div>
   {% if books.is_empty() %}
   <div class="empty-state">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></svg>
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></svg>
     <h3>No books found</h3>
     <p>{% if q.is_empty() %}No books in the catalog yet.{% else %}Nothing matches this search.{% endif %}</p>
   </div>
   {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Title</th><th>Author</th><th>Category</th><th style="text-align:right">Available</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
+  <table class="table">
+    <thead><tr><th>Title</th><th>Author</th><th>Category</th><th class="num">Available</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
     <tbody>
       {% for b in books %}
       <tr>
-        <td>{{ b.title }}{% if let Some(isbn) = b.isbn %}<div class="text-xs" style="color:var(--text-muted)">{{ isbn }}</div>{% endif %}</td>
-        <td>{% if let Some(a) = b.author %}{{ a }}{% else %}—{% endif %}</td>
-        <td>{% if let Some(c) = b.category %}{{ c }}{% else %}—{% endif %}</td>
-        <td style="text-align:right">{{ b.available }}/{{ b.copies }}</td>
+        <td>
+          <span class="font-medium">{{ b.title }}</span>
+          {% if let Some(isbn) = b.isbn %}<div class="font-mono text-xs" style="color:var(--text-muted);margin-top:2px">{{ isbn }}</div>{% endif %}
+        </td>
+        <td>{% if let Some(a) = b.author %}{{ a }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+        <td>{% if let Some(c) = b.category %}<span class="pill pill-neutral">{{ c }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+        <td class="num">
+          {% if b.available == 0 %}<span class="pill pill-err">0/{{ b.copies }}</span>
+          {% else %}<span class="pill pill-ok">{{ b.available }}/{{ b.copies }}</span>{% endif %}
+        </td>
         {% if can_edit %}
-        <td style="text-align:right">
+        <td class="num">
           <form method="post" action="/books/{{ b.id }}/delete" onsubmit="return confirm('Delete this book?')">
-            <button class="btn-ghost" type="submit">Delete</button>
+            <button class="btn-danger btn-sm" type="submit">Delete</button>
           </form>
         </td>
         {% endif %}

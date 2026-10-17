@@ -14,11 +14,14 @@ use crate::auth::middleware::require_roles;
 use crate::error::AppError;
 use crate::models::hr as hr_model;
 use crate::models::staff::{
-    classes_for_teacher, create_staff, find_linked_user, find_staff, list_staff, search_staff,
+    classes_for_teacher, count_staff, count_search_staff,
+    create_staff, find_linked_user, find_staff,
+    list_staff_paged, search_staff_paged,
     update_staff, validate_staff, StaffInput, StaffView,
 };
 use crate::models::audit as audit_model;
 use crate::models::user::{CurrentUser, Role};
+use crate::pagination::{PageItem, Paginated, DEFAULT_PER_PAGE};
 use crate::state::AppState;
 use crate::util;
 
@@ -138,6 +141,13 @@ struct StaffListTemplate {
     flash: Option<String>,
     flash_kind: String,
     staff: Vec<StaffView>,
+    page: i64,
+    total_pages: i64,
+    total: i64,
+    showing_start: i64,
+    showing_end: i64,
+    page_numbers: Vec<PageItem>,
+    base_url: String,
 }
 
 async fn staff_list(
@@ -149,9 +159,25 @@ async fn staff_list(
         .get("q")
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty());
-    let rows = match &q {
-        Some(term) => search_staff(&state.pool, term).await?,
-        None => list_staff(&state.pool).await?,
+    let page: i64 = params.get("page").and_then(|p| p.parse().ok()).unwrap_or(1).max(1);
+    let per_page = DEFAULT_PER_PAGE;
+    let offset = (page - 1) * per_page;
+    let (total, rows) = match &q {
+        Some(term) => {
+            let total = count_search_staff(&state.pool, term).await?;
+            let rows = search_staff_paged(&state.pool, term, per_page, offset).await?;
+            (total, rows)
+        }
+        None => {
+            let total = count_staff(&state.pool).await?;
+            let rows = list_staff_paged(&state.pool, per_page, offset).await?;
+            (total, rows)
+        }
+    };
+    let paginated: Paginated<()> = Paginated { items: vec![], page, per_page, total };
+    let base_url = match &q {
+        Some(term) => format!("/staff?q={}&", util::url_encode(term)),
+        None => "/staff?".to_string(),
     };
     let (user_name, user_initial) = user_ctx(&user);
     let (flash, flash_kind) = flash_ctx(&params);
@@ -165,6 +191,13 @@ async fn staff_list(
         flash,
         flash_kind,
         staff: rows.into_iter().map(StaffView::from).collect(),
+        page,
+        total_pages: paginated.total_pages(),
+        total,
+        showing_start: paginated.showing_start(),
+        showing_end: paginated.showing_end(),
+        page_numbers: paginated.page_numbers(),
+        base_url,
     };
     template.render().map(Html).map_err(AppError::from)
 }

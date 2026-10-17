@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 80" fill="none">
+  <rect width="80" height="80" rx="18" fill="#6366f1"/>
+  <path d="M40 20 16 33l24 12 24-12-24-12Z" fill="white"/>
+  <path d="M25 39v11c0 3.6 6.7 7.2 15 7.2s15-3.6 15-7.2V39" stroke="white" stroke-width="4.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="100" y="54" font-family="Inter, system-ui, sans-serif" font-size="36" font-weight="700" fill="#1a1a2e" letter-spacing="-0.5">OpenScholar</text>
+</svg>

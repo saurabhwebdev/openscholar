@@ -3,26 +3,33 @@
 {% block title %}{{ route.name }} — Transport{% endblock %}
 
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-4">
+<div class="breadcrumb">
+  <a href="/transport">Transport</a>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+  <span>{{ route.name }}</span>
+</div>
+
+<div class="flex flex-wrap items-end justify-between gap-4 mt-3">
   <div>
-    <p class="eyebrow">Manage · Transport · {{ route.name }}</p>
-    <h1 class="page-title mt-2">{{ route.name }}</h1>
+    <h1 class="page-title">{{ route.name }}</h1>
     <p class="page-sub">Stops and riders for this route.</p>
   </div>
   <div class="flex items-center gap-3">
     {% if over_capacity %}<span class="pill pill-err">Over capacity</span>{% else %}<span class="pill pill-ok">Within capacity</span>{% endif %}
-    <a class="btn-ghost" href="/transport">All transport</a>
+    <a class="btn-secondary" href="/transport">All transport</a>
   </div>
 </div>
 
 {% if let Some(msg) = flash %}
-<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-4"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
 {% endif %}
 
-<div class="card mt-6">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Stops</h2>
-    <span class="pill pill-info">{{ stops.len() }}</span>
+<div class="table-wrap mt-4">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+    <div class="flex items-center justify-between">
+      <span class="section-title">Stops</span>
+      <span class="pill pill-info">{{ stops.len() }}</span>
+    </div>
   </div>
   {% if stops.is_empty() %}
   <div class="empty-state">
@@ -30,16 +37,16 @@
     <p>Add stops along this route.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>#</th><th>Name</th><th></th></tr></thead>
+  <table class="table">
+    <thead><tr><th class="num">#</th><th>Name</th><th></th></tr></thead>
     <tbody>
       {% for s in stops %}
       <tr>
-        <td>{{ s.sequence }}</td>
-        <td>{{ s.name }}</td>
-        <td style="text-align:right">
+        <td class="num">{{ s.sequence }}</td>
+        <td class="font-medium">{{ s.name }}</td>
+        <td class="num">
           <form method="post" action="/transport-stops/{{ s.id }}/delete">
-            <button class="btn-ghost" type="submit">Delete</button>
+            <button class="btn-danger btn-sm" type="submit">Delete</button>
           </form>
         </td>
       </tr>
@@ -47,27 +54,28 @@
     </tbody>
   </table>
   {% endif %}
-
-  <form method="post" action="/transport-stops" class="mt-6 grid gap-4 sm:grid-cols-3">
-    <input type="hidden" name="route_id" value="{{ route.id }}">
-    <div>
-      <label class="label" for="stop_name">Stop name</label>
-      <input class="input" id="stop_name" name="name" type="text" required>
-    </div>
-    <div>
-      <label class="label" for="sequence">Sequence</label>
-      <input class="input" id="sequence" name="sequence" type="number" value="{{ stops.len() }}">
-    </div>
-    <div class="flex items-end">
+  <div style="padding:14px 16px;border-top:1px solid var(--border)">
+    <form method="post" action="/transport-stops" class="flex flex-wrap items-end gap-3">
+      <input type="hidden" name="route_id" value="{{ route.id }}">
+      <div class="grow" style="min-width:160px">
+        <label class="label" for="stop_name">Stop name</label>
+        <input class="input" id="stop_name" name="name" type="text" required>
+      </div>
+      <div style="min-width:100px">
+        <label class="label" for="sequence">Sequence</label>
+        <input class="input" id="sequence" name="sequence" type="number" value="{{ stops.len() }}">
+      </div>
       <button class="btn-primary" type="submit">Add stop</button>
-    </div>
-  </form>
+    </form>
+  </div>
 </div>
 
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Riders</h2>
-    <span class="pill pill-info">{{ riders.len() }}</span>
+<div class="table-wrap mt-4">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+    <div class="flex items-center justify-between">
+      <span class="section-title">Riders</span>
+      <span class="pill pill-info">{{ riders.len() }}</span>
+    </div>
   </div>
   {% if riders.is_empty() %}
   <div class="empty-state">
@@ -75,16 +83,16 @@
     <p>Add students to this route.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
+  <table class="table">
     <thead><tr><th>Student</th><th>Stop</th><th></th></tr></thead>
     <tbody>
       {% for r in riders %}
       <tr>
-        <td>{{ r.student_name }}</td>
-        <td>{% if let Some(n) = r.stop_name %}{{ n }}{% else %}—{% endif %}</td>
-        <td style="text-align:right">
+        <td class="font-medium">{{ r.student_name }}</td>
+        <td>{% if let Some(n) = r.stop_name %}{{ n }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+        <td class="num">
           <form method="post" action="/transport-riders/{{ r.id }}/delete">
-            <button class="btn-ghost" type="submit">Remove</button>
+            <button class="btn-danger btn-sm" type="submit">Remove</button>
           </form>
         </td>
       </tr>
@@ -92,29 +100,28 @@
     </tbody>
   </table>
   {% endif %}
-
-  <form method="post" action="/transport-riders" class="mt-6 grid gap-4 sm:grid-cols-3">
-    <input type="hidden" name="route_id" value="{{ route.id }}">
-    <div>
-      <label class="label" for="student_id">Student</label>
-      <select class="input" id="student_id" name="student_id" required>
-        {% for s in students %}
-        <option value="{{ s.id }}">{{ s.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div>
-      <label class="label" for="stop_id">Stop (optional)</label>
-      <select class="input" id="stop_id" name="stop_id">
-        <option value="">— none —</option>
-        {% for s in stops %}
-        <option value="{{ s.id }}">{{ s.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="flex items-end">
+  <div style="padding:14px 16px;border-top:1px solid var(--border)">
+    <form method="post" action="/transport-riders" class="flex flex-wrap items-end gap-3">
+      <input type="hidden" name="route_id" value="{{ route.id }}">
+      <div class="grow" style="min-width:160px">
+        <label class="label" for="student_id">Student</label>
+        <select class="input" id="student_id" name="student_id" required>
+          {% for s in students %}
+          <option value="{{ s.id }}">{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="grow" style="min-width:160px">
+        <label class="label" for="stop_id">Stop (optional)</label>
+        <select class="input" id="stop_id" name="stop_id">
+          <option value="">— none —</option>
+          {% for s in stops %}
+          <option value="{{ s.id }}">{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
       <button class="btn-primary" type="submit">Add rider</button>
-    </div>
-  </form>
+    </form>
+  </div>
 </div>
 {% endblock %}

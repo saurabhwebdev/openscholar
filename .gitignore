@@ -1,4 +1,18 @@
 /target/
 .env
 *.log
-.opencode/skills/impeccable/
+uploads/
+.opencode/
+
+# Editor / IDE
+*.swp
+*.swo
+*~
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# OS
+Thumbs.db
+.directory

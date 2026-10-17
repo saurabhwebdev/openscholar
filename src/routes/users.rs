@@ -13,6 +13,7 @@ use crate::auth::middleware::require_roles;
 use crate::auth::password;
 use crate::error::AppError;
 use crate::models::user::{CurrentUser, Role};
+use crate::pagination::{PageItem, Paginated, DEFAULT_PER_PAGE};
 use crate::state::AppState;
 use crate::util;
 
@@ -154,15 +155,30 @@ struct UserListRow {
     created: String,
 }
 
-async fn list_users(pool: &sqlx::PgPool) -> Result<Vec<UserListRow>, AppError> {
+async fn list_users(pool: &sqlx::PgPool, page: i64) -> Result<Paginated<UserListRow>, AppError> {
+    let per_page = DEFAULT_PER_PAGE;
+    let total: i64 =
+        sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM users")
+            .fetch_one(pool)
+            .await?;
+    let offset = (page - 1) * per_page;
     let rows = sqlx::query_as::<_, UserListRow>(
         "SELECT id, email, full_name, role, active,
                 to_char(created_at, 'YYYY-MM-DD') AS created
-         FROM users ORDER BY id LIMIT 500",
+         FROM users ORDER BY id LIMIT $1 OFFSET $2",
     )
+    .bind(per_page)
+    .bind(offset)
     .fetch_all(pool)
     .await?;
-    Ok(rows)
+    Ok(Paginated { items: rows, page, per_page, total })
+}
+
+#[derive(Debug, sqlx::FromRow)]
+struct UserSelectRow {
+    id: i64,
+    email: String,
+    full_name: String,
 }
 
 // ---------- list ----------
@@ -178,7 +194,15 @@ struct UsersListTemplate {
     flash: Option<String>,
     flash_kind: String,
     users: Vec<UserListRow>,
+    all_users: Vec<UserSelectRow>,
     current_user_id: i64,
+    total: i64,
+    base_url: &'static str,
+    page: i64,
+    total_pages: i64,
+    showing_start: i64,
+    showing_end: i64,
+    page_numbers: Vec<PageItem>,
 }
 
 async fn users_list(
@@ -187,7 +211,17 @@ async fn users_list(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, AppError> {
     require_roles(&user, &[Role::Admin])?;
-    let rows = list_users(&state.pool).await?;
+    let page = params
+        .get("page")
+        .and_then(|p| p.parse::<i64>().ok())
+        .unwrap_or(1)
+        .max(1);
+    let paginated = list_users(&state.pool, page).await?;
+    let all_users = sqlx::query_as::<_, UserSelectRow>(
+        "SELECT id, email, full_name FROM users ORDER BY full_name",
+    )
+    .fetch_all(&state.pool)
+    .await?;
     let (user_name, user_initial) = user_ctx(&user);
     let (flash, flash_kind) = flash_ctx(&params);
     let template = UsersListTemplate {
@@ -198,7 +232,15 @@ async fn users_list(
         user_initial,
         flash,
         flash_kind,
-        users: rows,
+        total: paginated.total,
+        base_url: "/users?",
+        page: paginated.page,
+        total_pages: paginated.total_pages(),
+        showing_start: paginated.showing_start(),
+        showing_end: paginated.showing_end(),
+        page_numbers: paginated.page_numbers(),
+        users: paginated.items,
+        all_users,
         current_user_id: user.id,
     };
     template.render().map(Html).map_err(AppError::from)

@@ -11,27 +11,26 @@
       {% if let Some(year) = school_year %}School year {{ year }} · live numbers{% else %}Set a current school year to unlock class stats{% endif %}
     </p>
   </div>
-  <span class="pill pill-info">Live overview</span>
 </div>
 
 <div class="stat-grid mt-6">
-  <div class="card">
-    <span class="icon-tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 2 9l10 5 10-5-10-5Z"/><path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5"/></svg></span>
+  <div class="card stat-card">
+    <span class="icon-tile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2 9l10 5 10-5-10-5Z"/><path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5"/></svg></span>
     <div class="stat-value">{{ students }}</div>
     <div class="stat-label">Active students</div>
   </div>
-  <div class="card">
-    <span class="icon-tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></span>
+  <div class="card stat-card">
+    <span class="icon-tile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></span>
     <div class="stat-value">{{ staff }}</div>
     <div class="stat-label">Active staff</div>
   </div>
-  <div class="card">
-    <span class="icon-tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4M8 7.5h2m4 0h2M8 11.5h2m4 0h2"/></svg></span>
+  <div class="card stat-card">
+    <span class="icon-tile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4M8 7.5h2m4 0h2M8 11.5h2m4 0h2"/></svg></span>
     <div class="stat-value">{{ classes }}</div>
     <div class="stat-label">Classes this year</div>
   </div>
-  <div class="card">
-    <span class="icon-tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/><path d="M6.5 9.5h.01M17.5 15.5h.01"/></svg></span>
+  <div class="card stat-card">
+    <span class="icon-tile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/><path d="M6.5 9.5h.01M17.5 15.5h.01"/></svg></span>
     <div class="stat-value">{{ outstanding }}</div>
     <div class="stat-label">Outstanding fees</div>
   </div>
@@ -40,35 +39,36 @@
 <div class="grid gap-4 mt-4 lg:grid-cols-5">
   <div class="card lg:col-span-3">
     <div class="flex items-center justify-between gap-4">
-      <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Largest outstanding balances</h2>
-      <span class="pill pill-info">Top 5</span>
+      <h2 class="section-title">Largest outstanding balances</h2>
+      <span class="pill pill-neutral">Top 5</span>
     </div>
     {% if balances.is_empty() %}
     <div class="empty-state">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin:0 auto"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M9.5 15l2 2 3.5-4"/></svg>
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 15l2 2 3.5-4"/><circle cx="12" cy="12" r="9"/></svg>
       <h3>All clear</h3>
-      <p>No student owes fees right now. New invoices will appear here automatically.</p>
+      <p>No student owes fees right now.</p>
     </div>
     {% else %}
-    <table class="table mt-4">
-      <thead><tr><th>Student</th><th style="text-align:right">Balance</th></tr></thead>
+    <div class="table-wrap mt-4" style="border:none;box-shadow:none">
+    <table class="table">
+      <thead><tr><th>Student</th><th class="num">Balance</th></tr></thead>
       <tbody>
         {% for b in balances %}
-        <tr><td>{{ b.name }}</td><td style="text-align:right">{{ b.balance }}</td></tr>
+        <tr><td>{{ b.name }}</td><td class="num">{{ b.balance }}</td></tr>
         {% endfor %}
       </tbody>
     </table>
+    </div>
     {% endif %}
   </div>
   <div class="card lg:col-span-2">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Getting started</h2>
-    <p class="text-sm mt-1" style="color:var(--text-muted)">Three steps to a live school.</p>
-    <ol class="mt-4 space-y-4 text-sm">
-      <li class="flex gap-3"><span class="pill pill-info shrink-0">1</span><span style="color:var(--text-muted)"><span class="font-semibold" style="color:var(--text)">Create a school year</span> and mark it current.</span></li>
-      <li class="flex gap-3"><span class="pill pill-info shrink-0">2</span><span style="color:var(--text-muted)"><span class="font-semibold" style="color:var(--text)">Add students and staff</span> to the directory.</span></li>
-      <li class="flex gap-3"><span class="pill pill-info shrink-0">3</span><span style="color:var(--text-muted)"><span class="font-semibold" style="color:var(--text)">Create classes</span> and enroll students.</span></li>
+    <h2 class="section-title">Getting started</h2>
+    <p class="text-xs mt-1" style="color:var(--text-muted)">Three steps to a live school.</p>
+    <ol class="mt-4 space-y-3">
+      <li class="flex gap-3 items-start text-sm"><span class="pill pill-info shrink-0" style="margin-top:2px">1</span><span style="color:var(--text-secondary)"><span class="font-semibold" style="color:var(--text)">Create a school year</span> and mark it current.</span></li>
+      <li class="flex gap-3 items-start text-sm"><span class="pill pill-info shrink-0" style="margin-top:2px">2</span><span style="color:var(--text-secondary)"><span class="font-semibold" style="color:var(--text)">Add students and staff</span> to the directory.</span></li>
+      <li class="flex gap-3 items-start text-sm"><span class="pill pill-info shrink-0" style="margin-top:2px">3</span><span style="color:var(--text-secondary)"><span class="font-semibold" style="color:var(--text)">Create classes</span> and enroll students.</span></li>
     </ol>
-    <div class="mt-6 pt-6 text-sm" style="border-top:1px solid var(--border);color:var(--text-muted)">Each section unlocks in the sidebar as it ships — students are next.</div>
   </div>
 </div>
 {% endblock %}

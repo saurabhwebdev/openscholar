@@ -3,42 +3,50 @@
 {% block title %}Library loans — OpenScholar{% endblock %}
 
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-4">
+<div class="breadcrumb">
+  <a href="/library">Library</a>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+  <span>Open loans</span>
+</div>
+
+<div class="flex flex-wrap items-end justify-between gap-4 mt-3">
   <div>
-    <p class="eyebrow">Manage · Library</p>
-    <h1 class="page-title mt-2">Open loans</h1>
+    <h1 class="page-title">Open loans</h1>
     <p class="page-sub">Track borrowed books and overdue items.</p>
   </div>
   <a class="btn-secondary" href="/library">Catalog</a>
 </div>
 
 {% if let Some(msg) = flash %}
-<div class="{% if flash_kind == "error" %}flash-err{% else if flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
+<div class="{% if flash_kind == "error" %}flash-err{% else if flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-4" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
 {% endif %}
 
-<div class="card mt-6">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Overdue</h2>
-    <span class="pill pill-err">{{ overdue.len() }}</span>
+<div class="table-wrap mt-4">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+    <div class="flex items-center justify-between">
+      <span class="section-title">Overdue</span>
+      <span class="pill pill-err">{{ overdue.len() }}</span>
+    </div>
   </div>
   {% if overdue.is_empty() %}
   <div class="empty-state">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
     <h3>No overdue loans</h3>
     <p>All borrowed books are within their due dates.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
+  <table class="table">
     <thead><tr><th>Book</th><th>Student</th><th>Borrowed</th><th>Due</th><th></th></tr></thead>
     <tbody>
       {% for l in overdue %}
       <tr>
-        <td>{{ l.book_title }}</td>
+        <td class="font-medium">{{ l.book_title }}</td>
         <td>{{ l.student_name }}</td>
-        <td>{{ l.borrowed_on }}</td>
+        <td style="white-space:nowrap">{{ l.borrowed_on }}</td>
         <td><span class="pill pill-err">{{ l.due_on }}</span></td>
-        <td style="text-align:right">
+        <td class="num">
           <form method="post" action="/library/loans/{{ l.id }}/return">
-            <button class="btn-primary" type="submit">Return</button>
+            <button class="btn-primary btn-sm" type="submit">Return</button>
           </form>
         </td>
       </tr>
@@ -48,29 +56,32 @@
   {% endif %}
 </div>
 
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">All open loans</h2>
-    <span class="pill pill-info">{{ loans.len() }}</span>
+<div class="table-wrap mt-4">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+    <div class="flex items-center justify-between">
+      <span class="section-title">All open loans</span>
+      <span class="pill pill-info">{{ loans.len() }}</span>
+    </div>
   </div>
   {% if loans.is_empty() %}
   <div class="empty-state">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></svg>
     <h3>No open loans</h3>
     <p>Borrowed books will appear here.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
+  <table class="table">
     <thead><tr><th>Book</th><th>Student</th><th>Borrowed</th><th>Due</th><th></th></tr></thead>
     <tbody>
       {% for l in loans %}
       <tr>
-        <td>{{ l.book_title }}</td>
+        <td class="font-medium">{{ l.book_title }}</td>
         <td>{{ l.student_name }}</td>
-        <td>{{ l.borrowed_on }}</td>
+        <td style="white-space:nowrap">{{ l.borrowed_on }}</td>
         <td>{% if l.overdue %}<span class="pill pill-err">{{ l.due_on }}</span>{% else %}{{ l.due_on }}{% endif %}</td>
-        <td style="text-align:right">
+        <td class="num">
           <form method="post" action="/library/loans/{{ l.id }}/return">
-            <button class="btn-secondary" type="submit">Return</button>
+            <button class="btn-secondary btn-sm" type="submit">Return</button>
           </form>
         </td>
       </tr>

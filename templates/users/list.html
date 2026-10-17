@@ -20,18 +20,18 @@
 {% endif %}
 
 <div class="card mt-6">
-  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">New user</h2>
+  <h2 class="section-title">New user</h2>
   <p class="text-sm mt-1" style="color:var(--text-muted)">Create a login account. Passwords need at least 8 characters.</p>
-  <form method="post" action="/users" class="mt-4 grid gap-4 sm:grid-cols-2">
-    <div>
+  <form method="post" action="/users" class="form-grid mt-4">
+    <div class="form-group">
       <label class="label" for="u-full-name">Full name</label>
       <input class="input" id="u-full-name" name="full_name" type="text" required autocomplete="name" placeholder="Ada Lovelace">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="u-email">Email</label>
       <input class="input" id="u-email" name="email" type="email" required autocomplete="email" placeholder="ada@example.com">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="u-role">Role</label>
       <select class="input" id="u-role" name="role">
         <option value="admin">admin</option>
@@ -41,7 +41,7 @@
         <option value="student">student</option>
       </select>
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="u-password">Password</label>
       <input class="input" id="u-password" name="password" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
     </div>
@@ -51,14 +51,16 @@
   </form>
 </div>
 
-<div class="card mt-4" style="padding:0;overflow:hidden">
-  {% if users.is_empty() %}
+{% if users.is_empty() %}
+<div class="card mt-4">
   <div class="empty-state">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3Z"/></svg>
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3Z"/></svg>
     <h3>No users yet</h3>
     <p>Create the first login account with the form above.</p>
   </div>
-  {% else %}
+</div>
+{% else %}
+<div class="table-wrap mt-4">
   <table class="table">
     <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Active</th><th>Created</th><th></th></tr></thead>
     <tbody>
@@ -71,25 +73,25 @@
         <td>{{ u.created }}</td>
         <td style="text-align:right;white-space:nowrap">
           <form method="post" action="/users/{{ u.id }}/toggle-active" style="display:inline">
-            <button class="btn-secondary" type="submit">{% if u.active %}Deactivate{% else %}Activate{% endif %}</button>
+            <button class="btn-secondary btn-sm" type="submit">{% if u.active %}Deactivate{% else %}Activate{% endif %}</button>
           </form>
           <form method="post" action="/users/{{ u.id }}/delete" style="display:inline" onsubmit="return confirm('Delete this user?');">
-            <button class="btn-ghost" type="submit">Delete</button>
+            <button class="btn-ghost btn-sm" type="submit" style="color:var(--err)">Delete</button>
           </form>
         </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-  {% endif %}
 </div>
+{% endif %}
 
 <div class="card mt-6">
-  <h2 class="text-lg font-semibold mb-1">Reset a user's password</h2>
-  <p class="text-sm text-muted mb-4">Sets a new password and signs that user out of all devices.</p>
-  <form method="post" action="/users/password" class="grid gap-4 sm:grid-cols-3 items-end"
+  <h2 class="section-title">Reset a user's password</h2>
+  <p class="text-sm mt-1" style="color:var(--text-muted)">Sets a new password and signs that user out of all devices.</p>
+  <form method="post" action="/users/password" class="form-grid mt-4 items-end"
         onsubmit="return confirm('Reset this user's password?');">
-    <div>
+    <div class="form-group">
       <label class="label" for="pw_user">User</label>
       <select class="input" id="pw_user" name="user_id" required>
         <option value="">Choose…</option>
@@ -98,11 +100,11 @@
         {% endfor %}
       </select>
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="pw_new">New password</label>
       <input class="input" id="pw_new" name="password" type="password" minlength="8" required />
     </div>
-    <div>
+    <div class="form-group">
       <button class="btn-primary" type="submit">Set password</button>
     </div>
   </form>

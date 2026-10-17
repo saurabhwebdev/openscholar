@@ -12,6 +12,7 @@ use crate::auth::middleware::require_roles;
 use crate::error::AppError;
 use crate::models::audit as audit_model;
 use crate::models::user::{CurrentUser, Role};
+use crate::pagination::{PageItem, DEFAULT_PER_PAGE};
 use crate::state::AppState;
 use crate::util;
 
@@ -50,6 +51,12 @@ struct ListParams {
     id: Option<i64>,
     flash: Option<String>,
     flash_kind: Option<String>,
+    #[serde(default = "default_page")]
+    page: i64,
+}
+
+fn default_page() -> i64 {
+    1
 }
 
 struct AuditView {
@@ -73,6 +80,13 @@ struct ListTemplate {
     flash: Option<String>,
     flash_kind: String,
     rows: Vec<AuditView>,
+    base_url: String,
+    page: i64,
+    total_pages: i64,
+    total: i64,
+    showing_start: i64,
+    showing_end: i64,
+    page_numbers: Vec<PageItem>,
 }
 
 async fn list_audit(
@@ -81,14 +95,50 @@ async fn list_audit(
     Query(params): Query<ListParams>,
 ) -> Result<impl IntoResponse, AppError> {
     require_roles(&user, &[Role::Admin])?;
-    let rows = if let (Some(entity), Some(id)) = (params.entity.as_deref(), params.id) {
-        audit_model::list_for(&state.pool, entity, id).await?
+    let page = if params.page < 1 { 1 } else { params.page };
+    let per_page = DEFAULT_PER_PAGE;
+    let offset = (page - 1) * per_page;
+
+    let (total, rows) = if let (Some(entity), Some(id)) = (params.entity.as_deref(), params.id) {
+        let total: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*)::BIGINT FROM audit_log WHERE entity = $1 AND entity_id = $2",
+        )
+        .bind(entity)
+        .bind(id)
+        .fetch_one(&state.pool)
+        .await?;
+        let rows = audit_model::list_for(&state.pool, entity, id).await?;
+        (total, rows)
     } else if let Some(entity) = params.entity.as_deref() {
         let all = audit_model::list_recent(&state.pool).await?;
-        all.into_iter().filter(|r| r.entity == entity).collect()
+        let filtered: Vec<_> = all.into_iter().filter(|r| r.entity == entity).collect();
+        let total = filtered.len() as i64;
+        (total, filtered)
     } else {
-        audit_model::list_recent(&state.pool).await?
+        let total: i64 = sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM audit_log")
+            .fetch_one(&state.pool)
+            .await?;
+        let rows = sqlx::query_as::<_, audit_model::AuditRow>(
+            "SELECT id, user_id, action, entity, entity_id, detail, created_at
+             FROM audit_log ORDER BY id DESC LIMIT $1 OFFSET $2",
+        )
+        .bind(per_page)
+        .bind(offset)
+        .fetch_all(&state.pool)
+        .await?;
+        (total, rows)
     };
+    let total_pages = if total == 0 { 1 } else { (total + per_page - 1) / per_page };
+    let showing_start = if total == 0 { 0 } else { offset + 1 };
+    let showing_end = std::cmp::min(offset + per_page, total);
+
+    let paginated_helper = crate::pagination::Paginated::<()> {
+        items: vec![],
+        page,
+        per_page,
+        total,
+    };
+
     let views: Vec<AuditView> = rows
         .into_iter()
         .map(|r| AuditView {
@@ -101,6 +151,15 @@ async fn list_audit(
             created_at: r.created_at.format("%-d %b %Y %H:%M").to_string(),
         })
         .collect();
+
+    let mut base_url = String::from("/audit?");
+    if let Some(entity) = &params.entity {
+        base_url.push_str(&format!("entity={}&", util::url_encode(entity)));
+    }
+    if let Some(id) = params.id {
+        base_url.push_str(&format!("id={}&", id));
+    }
+
     let (user_name, user_initial) = user_ctx(&user);
     let t = ListTemplate {
         section: "audit",
@@ -111,6 +170,13 @@ async fn list_audit(
         flash: params.flash,
         flash_kind: params.flash_kind.unwrap_or_else(|| "info".to_string()),
         rows: views,
+        base_url,
+        page,
+        total_pages,
+        total,
+        showing_start,
+        showing_end,
+        page_numbers: paginated_helper.page_numbers(),
     };
     t.render().map(Html).map_err(AppError::from)
 }

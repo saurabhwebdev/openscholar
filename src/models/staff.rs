@@ -130,27 +130,59 @@ pub async fn find_staff(pool: &PgPool, id: i64) -> Result<Option<StaffRow>, AppE
     Ok(row)
 }
 
+pub async fn count_staff(pool: &PgPool) -> Result<i64, AppError> {
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM staff")
+        .fetch_one(pool)
+        .await?;
+    Ok(count)
+}
+
 pub async fn list_staff(pool: &PgPool) -> Result<Vec<StaffRow>, AppError> {
+    list_staff_paged(pool, 200, 0).await
+}
+
+pub async fn list_staff_paged(pool: &PgPool, limit: i64, offset: i64) -> Result<Vec<StaffRow>, AppError> {
     let rows = sqlx::query_as::<_, StaffRow>(
         "SELECT id, employee_no, first_name, last_name, email, phone, job_title, \
          department, hired_on, status FROM staff \
-         ORDER BY last_name, first_name LIMIT 200",
+         ORDER BY last_name, first_name LIMIT $1 OFFSET $2",
     )
+    .bind(limit)
+    .bind(offset)
     .fetch_all(pool)
     .await?;
     Ok(rows)
 }
 
+pub async fn count_search_staff(pool: &PgPool, q: &str) -> Result<i64, AppError> {
+    let pattern = format!("%{}%", q.trim());
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM staff \
+         WHERE first_name ILIKE $1 OR last_name ILIKE $1 OR employee_no ILIKE $1 \
+         OR job_title ILIKE $1 OR department ILIKE $1",
+    )
+    .bind(pattern)
+    .fetch_one(pool)
+    .await?;
+    Ok(count)
+}
+
 pub async fn search_staff(pool: &PgPool, q: &str) -> Result<Vec<StaffRow>, AppError> {
+    search_staff_paged(pool, q, 200, 0).await
+}
+
+pub async fn search_staff_paged(pool: &PgPool, q: &str, limit: i64, offset: i64) -> Result<Vec<StaffRow>, AppError> {
     let pattern = format!("%{}%", q.trim());
     let rows = sqlx::query_as::<_, StaffRow>(
         "SELECT id, employee_no, first_name, last_name, email, phone, job_title, \
          department, hired_on, status FROM staff \
          WHERE first_name ILIKE $1 OR last_name ILIKE $1 OR employee_no ILIKE $1 \
          OR job_title ILIKE $1 OR department ILIKE $1 \
-         ORDER BY last_name, first_name LIMIT 200",
+         ORDER BY last_name, first_name LIMIT $2 OFFSET $3",
     )
     .bind(pattern)
+    .bind(limit)
+    .bind(offset)
     .fetch_all(pool)
     .await?;
     Ok(rows)

@@ -3,22 +3,27 @@
 {% block title %}{% if editing %}Edit class — OpenScholar{% else %}New class — OpenScholar{% endif %}{% endblock %}
 
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-4">
+<nav class="breadcrumb">
+  <a href="/classes">Classes</a>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+  <span>{% if editing %}Edit {{ name }}{% else %}New class{% endif %}</span>
+</nav>
+
+<div class="flex flex-wrap items-end justify-between gap-4 mt-2">
   <div>
-    <p class="eyebrow">Manage · Classes</p>
-    <h1 class="page-title mt-2">{% if editing %}Edit {{ name }}{% else %}New class{% endif %}</h1>
+    <h1 class="page-title">{% if editing %}Edit {{ name }}{% else %}New class{% endif %}</h1>
     <p class="page-sub">{% if editing %}Update class details and assignments.{% else %}Create a class within a school year.{% endif %}</p>
   </div>
-  <a class="btn-ghost" href="{% if editing %}/classes/{{ class_id.unwrap_or(0) }}{% else %}/classes{% endif %}">Back</a>
+  <a class="btn-ghost btn-sm" href="{% if editing %}/classes/{{ class_id.unwrap_or(0) }}{% else %}/classes{% endif %}">Back</a>
 </div>
 
 {% if let Some(msg) = flash %}
-<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-4"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
 {% endif %}
 
 <div class="card mt-6">
-  <form method="post" action="{% if editing %}/classes/{{ class_id.unwrap_or(0) }}/update{% else %}/classes{% endif %}" class="grid gap-4 sm:grid-cols-2">
-    <div>
+  <form method="post" action="{% if editing %}/classes/{{ class_id.unwrap_or(0) }}/update{% else %}/classes{% endif %}" class="form-grid">
+    <div class="form-group">
       <label class="label" for="f-year">School year</label>
       <select class="input" id="f-year" name="school_year_id" required>
         {% for y in years %}
@@ -26,19 +31,19 @@
         {% endfor %}
       </select>
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="f-name">Class name</label>
       <input class="input" id="f-name" name="name" type="text" required maxlength="120" value="{{ name }}" placeholder="Grade 1A">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="f-grade">Grade level</label>
       <input class="input" id="f-grade" name="grade_level" type="text" maxlength="60" value="{{ grade_level }}" placeholder="Grade 1">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="f-room">Room</label>
       <input class="input" id="f-room" name="room" type="text" maxlength="60" value="{{ room }}" placeholder="Room 4">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="f-teacher">Class teacher</label>
       <select class="input" id="f-teacher" name="teacher_id">
         <option value="">Unassigned</option>
@@ -47,13 +52,13 @@
         {% endfor %}
       </select>
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="f-cap">Capacity</label>
       <input class="input" id="f-cap" name="capacity" type="number" min="1" step="1" value="{{ capacity }}" placeholder="Leave blank for unlimited">
     </div>
-    <div class="sm:col-span-2 flex gap-3 mt-2">
+    <div class="form-actions full-width">
       <button class="btn-primary" type="submit">{% if editing %}Save changes{% else %}Create class{% endif %}</button>
-      <a class="btn-secondary" href="{% if editing %}/classes/{{ class_id.unwrap_or(0) }}{% else %}/classes{% endif %}">Cancel</a>
+      <a class="btn-ghost" href="{% if editing %}/classes/{{ class_id.unwrap_or(0) }}{% else %}/classes{% endif %}">Cancel</a>
     </div>
   </form>
 </div>

@@ -13,9 +13,12 @@ use serde::Deserialize;
 use crate::auth::middleware::require_roles;
 use crate::error::AppError;
 use crate::models::student::{
-    create_student, find_student, is_duplicate_admission, list_students, search_students,
+    count_students, count_search_students,
+    create_student, find_student, is_duplicate_admission,
+    list_students_paged, search_students_paged,
     update_student, validate_student, StudentInput, StudentView,
 };
+use crate::pagination::{PageItem, Paginated, DEFAULT_PER_PAGE};
 use crate::models::library::{open_loans_for_student, LoanView};
 use crate::models::transport as transport_model;
 use crate::models::welfare as welfare_model;
@@ -81,6 +84,13 @@ struct ListTemplate {
     can_edit: bool,
     flash: Option<String>,
     flash_kind: String,
+    page: i64,
+    total_pages: i64,
+    total: i64,
+    showing_start: i64,
+    showing_end: i64,
+    page_numbers: Vec<PageItem>,
+    base_url: String,
 }
 
 async fn list(
@@ -89,10 +99,23 @@ async fn list(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, AppError> {
     let q = params.get("q").cloned().unwrap_or_default();
-    let rows = if q.trim().is_empty() {
-        list_students(&state.pool).await?
+    let page: i64 = params.get("page").and_then(|p| p.parse().ok()).unwrap_or(1).max(1);
+    let per_page = DEFAULT_PER_PAGE;
+    let offset = (page - 1) * per_page;
+    let (total, rows) = if q.trim().is_empty() {
+        let total = count_students(&state.pool).await?;
+        let rows = list_students_paged(&state.pool, per_page, offset).await?;
+        (total, rows)
     } else {
-        search_students(&state.pool, &q).await?
+        let total = count_search_students(&state.pool, &q).await?;
+        let rows = search_students_paged(&state.pool, &q, per_page, offset).await?;
+        (total, rows)
+    };
+    let paginated: Paginated<()> = Paginated { items: vec![], page, per_page, total };
+    let base_url = if q.trim().is_empty() {
+        "/students?".to_string()
+    } else {
+        format!("/students?q={}&", util::url_encode(&q))
     };
     let (flash, flash_kind) = flash_params(&params);
     let template = ListTemplate {
@@ -106,6 +129,13 @@ async fn list(
         can_edit: user.has_role(&[Role::Admin, Role::Staff]),
         flash,
         flash_kind,
+        page,
+        total_pages: paginated.total_pages(),
+        total,
+        showing_start: paginated.showing_start(),
+        showing_end: paginated.showing_end(),
+        page_numbers: paginated.page_numbers(),
+        base_url,
     };
     template.render().map(Html).map_err(AppError::from)
 }

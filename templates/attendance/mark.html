@@ -5,7 +5,7 @@
 {% block content %}
 <div class="flex flex-wrap items-end justify-between gap-4">
   <div>
-    <p class="eyebrow">Record · Daily register</p>
+    <p class="eyebrow">Record</p>
     <h1 class="page-title mt-2">Attendance</h1>
     <p class="page-sub">Pick a class and date, mark each student, then save.</p>
   </div>
@@ -15,12 +15,12 @@
 </div>
 
 {% if let Some(msg) = flash %}
-<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-4"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
 {% endif %}
 
-<div class="card mt-6">
-  <form method="get" action="/attendance" class="flex flex-wrap items-end gap-4">
-    <div class="flex-1" style="min-width:220px">
+<div class="card mt-4">
+  <form method="get" action="/attendance" class="flex flex-wrap items-end gap-3">
+    <div class="grow" style="min-width:200px">
       <label class="label" for="class_id">Class</label>
       <select class="input" id="class_id" name="class_id" onchange="this.form.submit()">
         {% for c in classes %}
@@ -28,7 +28,7 @@
         {% endfor %}
       </select>
     </div>
-    <div>
+    <div style="min-width:160px">
       <label class="label" for="date">Date</label>
       <input class="input" id="date" type="date" name="date" value="{{ date_str }}" onchange="this.form.submit()">
     </div>
@@ -39,25 +39,27 @@
 {% if classes.is_empty() %}
 <div class="card mt-4">
   <div class="empty-state">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4m8-4v4"/></svg>
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4m8-4v4"/></svg>
     <h3>No classes yet</h3>
     <p>Create a class before marking attendance.</p>
-    <a class="btn-primary mt-4" href="/classes">Go to Classes</a>
+    <a class="btn-primary mt-3" href="/classes">Go to Classes</a>
   </div>
 </div>
 {% else %}
 {% if let Some(id) = selected_class %}
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Mark register</h2>
-    <span class="pill pill-info">{{ roster.len() }} students</span>
+<div class="table-wrap mt-4">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+    <div class="flex items-center justify-between">
+      <span class="section-title">Mark register</span>
+      <span class="pill pill-info">{{ roster.len() }} students</span>
+    </div>
   </div>
   {% if roster.is_empty() %}
   <div class="empty-state">
     <h3>No students enrolled</h3>
     <p>Enroll students in this class before marking attendance.</p>
     {% if let Some(id) = selected_class %}
-    <a class="btn-primary mt-4" href="/classes/{{ id }}">Open class</a>
+    <a class="btn-primary mt-3" href="/classes/{{ id }}">Open class</a>
     {% endif %}
   </div>
   {% else %}
@@ -65,70 +67,72 @@
   <form method="post" action="/attendance">
     <input type="hidden" name="class_id" value="{{ id }}">
     <input type="hidden" name="date" value="{{ date_str }}">
-    <table class="table mt-4">
-      <thead><tr><th>Admission no</th><th>Student</th><th>Status</th><th>Note</th></tr></thead>
+    <table class="table">
+      <thead><tr><th>Admission</th><th>Student</th><th>Status</th><th>Note</th></tr></thead>
       <tbody>
         {% for e in roster %}
         <tr>
-          <td>{{ e.admission_no }}</td>
-          <td>{{ e.full_name }}</td>
+          <td class="font-mono" style="color:var(--text-secondary)">{{ e.admission_no }}</td>
+          <td class="font-medium">{{ e.full_name }}</td>
           <td>
-            <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Status for {{ e.full_name }}">
-              <label class="pill{% if e.status == "present" %} pill-info{% endif %}" style="cursor:pointer">
-                <input type="radio" name="status_{{ e.student_id }}" value="present"{% if e.status == "present" %} checked{% endif %}> Present
+            <div class="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Status for {{ e.full_name }}">
+              <label class="pill{% if e.status == "present" %} pill-ok{% else %} pill-neutral{% endif %}" style="cursor:pointer;gap:4px">
+                <input type="radio" name="status_{{ e.student_id }}" value="present"{% if e.status == "present" %} checked{% endif %} style="width:14px;height:14px"> Present
               </label>
-              <label class="pill{% if e.status == "absent" %} pill-info{% endif %}" style="cursor:pointer">
-                <input type="radio" name="status_{{ e.student_id }}" value="absent"{% if e.status == "absent" %} checked{% endif %}> Absent
+              <label class="pill{% if e.status == "absent" %} pill-err{% else %} pill-neutral{% endif %}" style="cursor:pointer;gap:4px">
+                <input type="radio" name="status_{{ e.student_id }}" value="absent"{% if e.status == "absent" %} checked{% endif %} style="width:14px;height:14px"> Absent
               </label>
-              <label class="pill{% if e.status == "late" %} pill-info{% endif %}" style="cursor:pointer">
-                <input type="radio" name="status_{{ e.student_id }}" value="late"{% if e.status == "late" %} checked{% endif %}> Late
+              <label class="pill{% if e.status == "late" %} pill-warn{% else %} pill-neutral{% endif %}" style="cursor:pointer;gap:4px">
+                <input type="radio" name="status_{{ e.student_id }}" value="late"{% if e.status == "late" %} checked{% endif %} style="width:14px;height:14px"> Late
               </label>
-              <label class="pill{% if e.status == "excused" %} pill-info{% endif %}" style="cursor:pointer">
-                <input type="radio" name="status_{{ e.student_id }}" value="excused"{% if e.status == "excused" %} checked{% endif %}> Excused
+              <label class="pill{% if e.status == "excused" %} pill-info{% else %} pill-neutral{% endif %}" style="cursor:pointer;gap:4px">
+                <input type="radio" name="status_{{ e.student_id }}" value="excused"{% if e.status == "excused" %} checked{% endif %} style="width:14px;height:14px"> Excused
               </label>
             </div>
           </td>
-          <td><input class="input" type="text" name="note_{{ e.student_id }}" value="{{ e.note }}" placeholder="Optional" maxlength="500"></td>
+          <td><input class="input" type="text" name="note_{{ e.student_id }}" value="{{ e.note }}" placeholder="Optional" maxlength="500" style="min-width:120px"></td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
-    <div class="flex justify-end mt-4">
+    <div style="padding:14px 16px;border-top:1px solid var(--border)" class="flex items-center justify-between gap-3">
       <button class="btn-primary" type="submit">Save attendance</button>
     </div>
   </form>
-  <div class="flex flex-wrap items-center justify-between gap-4 mt-4" style="border-top:1px solid var(--border);padding-top:16px">
-    <p class="text-sm" style="color:var(--text-muted)">Remove every record for this class on {{ date_str }}.</p>
+  <div style="padding:14px 16px;border-top:1px solid var(--border)" class="flex items-center justify-between gap-3">
+    <span class="text-xs" style="color:var(--text-muted)">Remove every record for this class on {{ date_str }}.</span>
     <form method="post" action="/attendance/clear" onsubmit="return confirm('Clear all attendance for this class on {{ date_str }}?')">
       <input type="hidden" name="class_id" value="{{ id }}">
       <input type="hidden" name="date" value="{{ date_str }}">
-      <button class="btn-secondary" type="submit" style="color:var(--err);border-color:color-mix(in oklch, var(--err) 40%, transparent)">Clear day</button>
+      <button class="btn-danger btn-sm" type="submit">Clear day</button>
     </form>
   </div>
   {% endif %}
   {% endif %}
 </div>
 
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Recent days</h2>
-    <span class="pill pill-info">last {{ recent.len() }}</span>
+<div class="table-wrap mt-4">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+    <div class="flex items-center justify-between">
+      <span class="section-title">Recent days</span>
+      <span class="pill pill-neutral">last {{ recent.len() }}</span>
+    </div>
   </div>
   {% if recent.is_empty() %}
   <div class="empty-state">
     <h3>No attendance recorded</h3>
-    <p>Saved days for this class will appear here with present/absent counts.</p>
+    <p>Saved days will appear here with present/absent counts.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Date</th><th style="text-align:right">Present</th><th style="text-align:right">Absent</th><th style="text-align:right">Total</th></tr></thead>
+  <table class="table">
+    <thead><tr><th>Date</th><th class="num">Present</th><th class="num">Absent</th><th class="num">Total</th></tr></thead>
     <tbody>
       {% for d in recent %}
       <tr>
-        <td>{{ d.date }}</td>
-        <td style="text-align:right">{{ d.present }}</td>
-        <td style="text-align:right">{{ d.absent }}</td>
-        <td style="text-align:right">{{ d.total }}</td>
+        <td class="font-medium">{{ d.date }}</td>
+        <td class="num"><span class="pill pill-ok">{{ d.present }}</span></td>
+        <td class="num">{% if d.absent > 0 %}<span class="pill pill-err">{{ d.absent }}</span>{% else %}{{ d.absent }}{% endif %}</td>
+        <td class="num">{{ d.total }}</td>
       </tr>
       {% endfor %}
     </tbody>

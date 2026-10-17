@@ -1,0 +1,38 @@
+{# Pagination component — expects `base_url`, `page`, `total_pages`, `total`, `showing_start`, `showing_end` #}
+{% if total_pages > 1 %}
+<div class="pagination">
+  <span class="pagination-info">{{ showing_start }}–{{ showing_end }} of {{ total }}</span>
+  <div class="pagination-pages">
+    {% if page > 1 %}
+    <a href="{{ base_url }}page={{ page - 1 }}" class="pagination-prev" title="Previous">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </a>
+    {% else %}
+    <span class="pagination-prev disabled">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </span>
+    {% endif %}
+    {% for item in page_numbers %}
+    {% match item %}
+    {% when crate::pagination::PageItem::Page with (n) %}
+      {% if *n == page %}
+      <span class="active">{{ n }}</span>
+      {% else %}
+      <a href="{{ base_url }}page={{ n }}">{{ n }}</a>
+      {% endif %}
+    {% when crate::pagination::PageItem::Dots %}
+      <span class="dots">&hellip;</span>
+    {% endmatch %}
+    {% endfor %}
+    {% if page < total_pages %}
+    <a href="{{ base_url }}page={{ page + 1 }}" class="pagination-next" title="Next">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </a>
+    {% else %}
+    <span class="pagination-next disabled">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </span>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

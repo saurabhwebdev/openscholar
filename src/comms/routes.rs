@@ -11,6 +11,7 @@ use axum::{
 use crate::comms::mailer::{send_one, SmtpConfig};
 use crate::error::AppError;
 use crate::models::user::{CurrentUser, Role};
+use crate::pagination::PageItem;
 use crate::state::AppState;
 use crate::util;
 
@@ -141,6 +142,13 @@ struct OutboxTemplate {
     sent: i64,
     failed: i64,
     mails: Vec<MailView>,
+    page: i64,
+    total_pages: i64,
+    total: i64,
+    showing_start: i64,
+    showing_end: i64,
+    page_numbers: Vec<PageItem>,
+    base_url: String,
 }
 
 async fn outbox_page(
@@ -180,6 +188,13 @@ async fn outbox_page(
                 last_error: r.last_error,
             })
             .collect(),
+        page: 1,
+        total_pages: 1,
+        total: counts.queued + counts.sent + counts.failed,
+        showing_start: 1,
+        showing_end: counts.queued + counts.sent + counts.failed,
+        page_numbers: vec![PageItem::Page(1)],
+        base_url: "/outbox?".to_string(),
     };
     t.render().map(Html).map_err(AppError::from)
 }

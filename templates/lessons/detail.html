@@ -3,75 +3,81 @@
 {% block title %}Lesson — OpenScholar{% endblock %}
 
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-4">
+<nav class="breadcrumb">
+  <a href="/lessons">Lessons</a>
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+  <span>{{ lesson.title }}</span>
+</nav>
+
+<div class="flex flex-wrap items-end justify-between gap-4 mt-3">
   <div>
-    <p class="eyebrow">Record · Lessons</p>
-    <h1 class="page-title mt-2">{{ lesson.title }}</h1>
+    <h1 class="page-title">{{ lesson.title }}</h1>
     <p class="page-sub">{{ lesson.date }}</p>
   </div>
-  <a class="btn-ghost" href="/lessons">Back</a>
 </div>
 
 {% if let Some(msg) = flash %}
 <div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
 {% endif %}
 
-<div class="card mt-4">
-  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Details</h2>
-  <dl class="mt-4 space-y-4 text-sm">
-    <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Body</dt><dd class="font-medium">{% if let Some(b) = lesson.body %}{{ b }}{% else %}—{% endif %}</dd></div>
-    <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Homework</dt><dd class="font-medium">{% if let Some(h) = lesson.homework %}{{ h }}{% else %}—{% endif %}</dd></div>
+<div class="card mt-6">
+  <h2 class="section-title mb-3">Details</h2>
+  <dl>
+    <div class="detail-row"><dt>Body</dt><dd>{% if let Some(b) = lesson.body %}{{ b }}{% else %}—{% endif %}</dd></div>
+    <div class="detail-row"><dt>Homework</dt><dd>{% if let Some(h) = lesson.homework %}{{ h }}{% else %}—{% endif %}</dd></div>
   </dl>
 </div>
 
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Materials</h2>
-    <span class="pill pill-info">{{ materials.len() }}</span>
+<div class="mt-6">
+  <div class="flex items-center justify-between gap-4 mb-3">
+    <h2 class="section-title">Materials</h2>
+    <span class="pill pill-neutral">{{ materials.len() }}</span>
   </div>
   {% if materials.is_empty() %}
-  <div class="empty-state">
-    <h3>No materials</h3>
-    <p>No files attached to this lesson.</p>
-  </div>
+  <div class="card"><div class="empty-state"><h3>No materials</h3><p>No files attached to this lesson.</p></div></div>
   {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Filename</th><th style="text-align:right">Size</th><th></th></tr></thead>
-    <tbody>
-      {% for m in materials %}
-      <tr>
-        <td>{{ m.filename }}</td>
-        <td style="text-align:right">{{ m.size_bytes }}</td>
-        <td style="text-align:right">
-          {% if can_mutate %}
-          <form method="post" action="/materials/{{ m.id }}/delete">
-            <button class="btn-ghost" type="submit">Delete</button>
-          </form>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Filename</th><th class="num">Size</th><th></th></tr></thead>
+      <tbody>
+        {% for m in materials %}
+        <tr>
+          <td>{{ m.filename }}</td>
+          <td class="num">{{ m.size_bytes }}</td>
+          <td class="text-right">
+            {% if can_mutate %}
+            <form method="post" action="/materials/{{ m.id }}/delete">
+              <button class="btn-sm btn-danger" type="submit">Delete</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
   {% if can_mutate %}
-  <form method="post" action="/lessons/{{ lesson.id }}/materials" class="mt-4 grid gap-4 sm:grid-cols-2">
-    <div>
-      <label class="label" for="filename">Filename</label>
-      <input class="input" id="filename" name="filename" type="text" required>
-    </div>
-    <div>
-      <label class="label" for="storage_key">Storage key</label>
-      <input class="input" id="storage_key" name="storage_key" type="text">
-    </div>
-    <div>
-      <label class="label" for="size_bytes">Size bytes</label>
-      <input class="input" id="size_bytes" name="size_bytes" type="text" value="0">
-    </div>
-    <div class="sm:col-span-2">
-      <button class="btn-primary" type="submit">Add material</button>
-    </div>
-  </form>
+  <div class="card mt-4">
+    <h2 class="section-title mb-4">Add material</h2>
+    <form method="post" action="/lessons/{{ lesson.id }}/materials" class="form-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="form-group">
+        <label class="label" for="filename">Filename</label>
+        <input class="input" id="filename" name="filename" type="text" required>
+      </div>
+      <div class="form-group">
+        <label class="label" for="storage_key">Storage key</label>
+        <input class="input" id="storage_key" name="storage_key" type="text">
+      </div>
+      <div class="form-group">
+        <label class="label" for="size_bytes">Size bytes</label>
+        <input class="input" id="size_bytes" name="size_bytes" type="text" value="0">
+      </div>
+      <div class="form-actions" style="grid-column:1/-1">
+        <button class="btn-primary" type="submit">Add material</button>
+      </div>
+    </form>
+  </div>
   {% endif %}
 </div>
 {% endblock %}

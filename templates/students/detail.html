@@ -3,26 +3,31 @@
 {% block title %}{{ student.full_name }} — OpenScholar{% endblock %}
 
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-4">
+<nav class="breadcrumb">
+  <a href="/students">Students</a>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+  <span>{{ student.full_name }}</span>
+</nav>
+
+<div class="flex flex-wrap items-end justify-between gap-4 mt-2">
   <div>
-    <p class="eyebrow">Manage · Students · {{ student.admission_no }}</p>
-    <h1 class="page-title mt-2">{{ student.full_name }}</h1>
-    <p class="page-sub">Enrolled {{ student.enrolled_on }}</p>
+    <h1 class="page-title">{{ student.full_name }}</h1>
+    <p class="page-sub">{{ student.admission_no }} · Enrolled {{ student.enrolled_on }}</p>
   </div>
-  <div class="flex flex-wrap items-center gap-4">
+  <div class="flex flex-wrap items-center gap-3">
     {% if student.status.as_str() == "active" %}<span class="pill pill-ok">Active</span>
     {% else if student.status.as_str() == "inactive" %}<span class="pill pill-warn">Inactive</span>
     {% else %}<span class="pill pill-info">Graduated</span>{% endif %}
     {% if can_edit %}
-    <a class="btn-secondary" href="/students/{{ student.id }}/edit">Edit</a>
+    <a class="btn-secondary btn-sm" href="/students/{{ student.id }}/edit">Edit</a>
     {% endif %}
-    <a class="btn-secondary" href="/print/students/{{ student.id }}/report-card">Report card</a>
-    <a class="btn-secondary" href="/print/students/{{ student.id }}/transcript">Transcript</a>
+    <a class="btn-ghost btn-sm" href="/print/students/{{ student.id }}/report-card">Report card</a>
+    <a class="btn-ghost btn-sm" href="/print/students/{{ student.id }}/transcript">Transcript</a>
   </div>
 </div>
 
 {% if let Some(msg) = flash %}
-<div class="{% if flash_kind == "error" %}flash-err{% else %}flash-info{% endif %} mt-6" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
+<div class="{% if flash_kind == "error" %}flash-err{% else %}flash-info{% endif %} mt-4" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
 {% endif %}
 
 <div class="stat-grid mt-6">
@@ -31,44 +36,86 @@
     <div class="stat-label">Fee balance</div>
   </div>
   <div class="card">
-    <div class="stat-value">{{ student.admission_no }}</div>
+    <div class="stat-value font-mono">{{ student.admission_no }}</div>
     <div class="stat-label">Admission number</div>
   </div>
 </div>
 
-<div class="grid gap-4 mt-4 lg:grid-cols-2">
-  <div class="card">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Details</h2>
-    <dl class="mt-4 space-y-4 text-sm">
-      <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Date of birth</dt><dd class="font-medium">{% if student.date_of_birth.is_empty() %}—{% else %}{{ student.date_of_birth }}{% endif %}</dd></div>
-      <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Gender</dt><dd class="font-medium">{% if student.gender.is_empty() %}—{% else %}{{ student.gender }}{% endif %}</dd></div>
-      <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Guardian</dt><dd class="font-medium">{% if student.guardian_name.is_empty() %}—{% else %}{{ student.guardian_name }}{% endif %}</dd></div>
-      <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Guardian phone</dt><dd class="font-medium">{% if student.guardian_phone.is_empty() %}—{% else %}{{ student.guardian_phone }}{% endif %}</dd></div>
-      <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Guardian email</dt><dd class="font-medium">{% if student.guardian_email.is_empty() %}—{% else %}{{ student.guardian_email }}{% endif %}</dd></div>
-      <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Address</dt><dd class="font-medium">{% if student.address.is_empty() %}—{% else %}{{ student.address }}{% endif %}</dd></div>
-    </dl>
+<div class="detail-grid mt-4">
+  <div>
+    <div class="card">
+      <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Details</h2>
+      <dl class="mt-4">
+        <div class="detail-row"><dt>Date of birth</dt><dd>{% if student.date_of_birth.is_empty() %}—{% else %}{{ student.date_of_birth }}{% endif %}</dd></div>
+        <div class="detail-row"><dt>Gender</dt><dd>{% if student.gender.is_empty() %}—{% else %}{{ student.gender }}{% endif %}</dd></div>
+        <div class="detail-row"><dt>Guardian</dt><dd>{% if student.guardian_name.is_empty() %}—{% else %}{{ student.guardian_name }}{% endif %}</dd></div>
+        <div class="detail-row"><dt>Guardian phone</dt><dd>{% if student.guardian_phone.is_empty() %}—{% else %}{{ student.guardian_phone }}{% endif %}</dd></div>
+        <div class="detail-row"><dt>Guardian email</dt><dd>{% if student.guardian_email.is_empty() %}—{% else %}{{ student.guardian_email }}{% endif %}</dd></div>
+        <div class="detail-row"><dt>Address</dt><dd>{% if student.address.is_empty() %}—{% else %}{{ student.address }}{% endif %}</dd></div>
+      </dl>
+    </div>
+
+    <div class="card mt-4">
+      <div class="flex items-center justify-between gap-4">
+        <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Welfare</h2>
+        <span class="pill pill-info">{{ welfare_total }} incidents</span>
+      </div>
+      <dl class="mt-4">
+        <div class="detail-row"><dt>Minor</dt><dd>{{ welfare_minor }}</dd></div>
+        <div class="detail-row"><dt>Major</dt><dd>{{ welfare_major }}</dd></div>
+        <div class="detail-row"><dt>Positive</dt><dd>{{ welfare_positive }}</dd></div>
+      </dl>
+      <div class="mt-4">
+        <a class="btn-ghost btn-sm" href="/students/{{ student.id }}/welfare">Open welfare record</a>
+      </div>
+    </div>
   </div>
-  <div class="card">
-    <div class="flex items-center justify-between gap-4">
-      <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Enrollments</h2>
-      <span class="pill pill-info">{{ enrollments.len() }}</span>
+
+  <div>
+    <div class="card">
+      <div class="flex items-center justify-between gap-4">
+        <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Enrollments</h2>
+        <span class="pill pill-info">{{ enrollments.len() }}</span>
+      </div>
+      {% if enrollments.is_empty() %}
+      <div class="empty-state">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4M8 7.5h2m4 0h2M8 11.5h2m4 0h2"/></svg>
+        <h3>Not enrolled yet</h3>
+        <p>Enrollments will appear here automatically.</p>
+      </div>
+      {% else %}
+      <table class="table mt-4">
+        <thead><tr><th>Class</th><th style="text-align:right">Enrolled</th></tr></thead>
+        <tbody>
+          {% for e in enrollments %}
+          <tr><td>{{ e.class_name }}</td><td style="text-align:right">{{ e.enrolled_on }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
     </div>
-    {% if enrollments.is_empty() %}
-    <div class="empty-state">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4M8 7.5h2m4 0h2M8 11.5h2m4 0h2"/></svg>
-      <h3>Not enrolled yet</h3>
-      <p>This student is not assigned to any class. Enrollments will appear here automatically.</p>
+
+    <div class="card mt-4">
+      <div class="flex items-center justify-between gap-4">
+        <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Hostel</h2>
+        <span class="pill pill-info">{% if hostel_allocation.is_some() %}Allocated{% else %}None{% endif %}</span>
+      </div>
+      {% if let Some(a) = hostel_allocation %}
+      <dl class="mt-4">
+        <div class="detail-row"><dt>Room</dt><dd>{% if let Some(n) = a.room_name %}{{ n }}{% else %}#{{ a.room_id }}{% endif %}</dd></div>
+        <div class="detail-row"><dt>Bed</dt><dd>{% if let Some(b) = a.bed_label %}{{ b }}{% else %}—{% endif %}</dd></div>
+        <div class="detail-row"><dt>Allocated</dt><dd>{{ a.allocated_on }}</dd></div>
+      </dl>
+      <div class="mt-4">
+        <a class="btn-ghost btn-sm" href="/hostel">Manage hostel</a>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <h3>No room allocated</h3>
+        <p>Not currently in a hostel room.</p>
+      </div>
+      {% endif %}
     </div>
-    {% else %}
-    <table class="table mt-4">
-      <thead><tr><th>Class</th><th style="text-align:right">Enrolled</th></tr></thead>
-      <tbody>
-        {% for e in enrollments %}
-        <tr><td>{{ e.class_name }}</td><td style="text-align:right">{{ e.enrolled_on }}</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% endif %}
   </div>
 </div>
 
@@ -79,27 +126,29 @@
   </div>
   {% if open_loans.is_empty() %}
   <div class="empty-state">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></svg>
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></svg>
     <h3>No open loans</h3>
-    <p>This student has no borrowed books.</p>
+    <p>No borrowed books.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Book</th><th>Borrowed</th><th>Due</th></tr></thead>
-    <tbody>
-      {% for l in open_loans %}
-      <tr>
-        <td>{{ l.book_title }}</td>
-        <td>{{ l.borrowed_on }}</td>
-        <td>{% if l.overdue %}<span class="pill pill-err">{{ l.due_on }}</span>{% else %}{{ l.due_on }}{% endif %}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Book</th><th>Borrowed</th><th>Due</th></tr></thead>
+      <tbody>
+        {% for l in open_loans %}
+        <tr>
+          <td>{{ l.book_title }}</td>
+          <td>{{ l.borrowed_on }}</td>
+          <td>{% if l.overdue %}<span class="pill pill-err">{{ l.due_on }}</span>{% else %}{{ l.due_on }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
   {% if can_edit %}
   <div class="mt-4">
-    <a class="btn-secondary" href="/library">Borrow a book</a>
+    <a class="btn-ghost btn-sm" href="/library">Borrow a book</a>
   </div>
   {% endif %}
 </div>
@@ -112,55 +161,70 @@
   {% if transport_routes.is_empty() %}
   <div class="empty-state">
     <h3>No transport assigned</h3>
-    <p>This student is not assigned to any transport route.</p>
+    <p>Not assigned to any transport route.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Route</th><th>Vehicle</th><th>Stop</th><th style="text-align:right">Fee</th></tr></thead>
-    <tbody>
-      {% for r in transport_routes %}
-      <tr>
-        <td>{{ r.name }}</td>
-        <td>{% if let Some(v) = r.vehicle_reg %}{{ v }}{% else %}—{% endif %}</td>
-        <td>{% if let Some(s) = r.stop_name %}{{ s }}{% else %}—{% endif %}</td>
-        <td style="text-align:right">{{ r.fee() }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-</div>
-
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Hostel</h2>
-    <span class="pill pill-info">{% if hostel_allocation.is_some() %}Allocated{% else %}None{% endif %}</span>
-  </div>
-  {% if let Some(a) = hostel_allocation %}
-  <dl class="mt-4 space-y-4 text-sm">
-    <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Room</dt><dd class="font-medium">{% if let Some(n) = a.room_name %}{{ n }}{% else %}#{{ a.room_id }}{% endif %}</dd></div>
-    <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Bed</dt><dd class="font-medium">{% if let Some(b) = a.bed_label %}{{ b }}{% else %}—{% endif %}</dd></div>
-    <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Allocated</dt><dd class="font-medium">{{ a.allocated_on }}</dd></div>
-  </dl>
-  <div class="mt-4">
-    <a class="btn-secondary" href="/hostel">Manage hostel</a>
-  </div>
-  {% else %}
-  <div class="empty-state">
-    <h3>No room allocated</h3>
-    <p>This student is not currently in a hostel room.</p>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Route</th><th>Vehicle</th><th>Stop</th><th style="text-align:right">Fee</th></tr></thead>
+      <tbody>
+        {% for r in transport_routes %}
+        <tr>
+          <td>{{ r.name }}</td>
+          <td>{% if let Some(v) = r.vehicle_reg %}{{ v }}{% else %}—{% endif %}</td>
+          <td>{% if let Some(s) = r.stop_name %}{{ s }}{% else %}—{% endif %}</td>
+          <td style="text-align:right">{{ r.fee() }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
   {% endif %}
 </div>
 
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Welfare</h2>
-    <span class="pill pill-info">{{ welfare_total }} incidents</span>
+<div class="grid gap-4 mt-4 lg:grid-cols-2">
+  <div class="card">
+    <div class="flex items-center justify-between gap-4">
+      <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Lessons</h2>
+      <span class="pill pill-info">{{ lessons.len() }}</span>
+    </div>
+    {% if lessons.is_empty() %}
+    <div class="empty-state">
+      <h3>No lessons</h3>
+      <p>No lessons recorded for this student's classes.</p>
+    </div>
+    {% else %}
+    <table class="table mt-4">
+      <thead><tr><th>Title</th><th style="text-align:right">Date</th></tr></thead>
+      <tbody>
+        {% for l in lessons %}
+        <tr><td><a class="rowlink" href="/lessons/{{ l.id }}">{{ l.title }}</a></td><td style="text-align:right">{{ l.date }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
   </div>
-  <p class="text-sm mt-2" style="color:var(--text-muted)">Minor: {{ welfare_minor }} · Major: {{ welfare_major }} · Positive: {{ welfare_positive }}</p>
-  <div class="mt-4">
-    <a class="btn-secondary" href="/students/{{ student.id }}/welfare">Open welfare record</a>
+
+  <div class="card">
+    <div class="flex items-center justify-between gap-4">
+      <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Activities</h2>
+      <span class="pill pill-info">{{ activities.len() }}</span>
+    </div>
+    {% if activities.is_empty() %}
+    <div class="empty-state">
+      <h3>No activities</h3>
+      <p>Not enrolled in any activity.</p>
+    </div>
+    {% else %}
+    <table class="table mt-4">
+      <thead><tr><th>Name</th><th>Kind</th></tr></thead>
+      <tbody>
+        {% for a in activities %}
+        <tr><td>{{ a.name }}</td><td>{{ a.kind }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
   </div>
 </div>
 
@@ -172,43 +236,45 @@
   {% if attachments.is_empty() %}
   <div class="empty-state">
     <h3>No attachments</h3>
-    <p>No documents uploaded for this student yet.</p>
+    <p>No documents uploaded yet.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Filename</th><th>Type</th><th style="text-align:right">Size</th><th></th></tr></thead>
-    <tbody>
-      {% for a in attachments %}
-      <tr>
-        <td><a href="{{ a.download_url }}">{{ a.filename }}</a></td>
-        <td>{{ a.content_type }}</td>
-        <td style="text-align:right">{{ a.size_bytes }}</td>
-        <td style="text-align:right">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Filename</th><th>Type</th><th style="text-align:right">Size</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
+      <tbody>
+        {% for a in attachments %}
+        <tr>
+          <td><a href="{{ a.download_url }}">{{ a.filename }}</a></td>
+          <td>{{ a.content_type }}</td>
+          <td style="text-align:right">{{ a.size_bytes }}</td>
           {% if can_edit %}
-          <form method="post" action="/attachments/{{ a.id }}/delete">
-            <button class="btn-ghost" type="submit">Delete</button>
-          </form>
+          <td style="text-align:right">
+            <form method="post" action="/attachments/{{ a.id }}/delete">
+              <button class="btn-ghost btn-sm" type="submit" style="color:var(--err)">Delete</button>
+            </form>
+          </td>
           {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
   {% if can_edit %}
-  <form method="post" action="/attachments" class="mt-4 grid gap-4 sm:grid-cols-2" id="attach-form">
+  <form method="post" action="/attachments" class="form-grid mt-4 pt-4" style="border-top:1px solid var(--border)" id="attach-form">
     <input type="hidden" name="entity" value="student">
     <input type="hidden" name="entity_id" value="{{ student.id }}">
     <input type="hidden" id="att_filename" name="filename" value="">
     <input type="hidden" id="att_content_type" name="content_type" value="">
     <input type="hidden" id="att_size_bytes" name="size_bytes" value="0">
     <input type="hidden" id="att_data" name="data" value="">
-    <div class="sm:col-span-2">
+    <div class="full-width">
       <label class="label" for="att_file">File</label>
       <input class="input" id="att_file" type="file">
     </div>
-    <div class="sm:col-span-2">
-      <button class="btn-primary" type="submit">Upload</button>
+    <div class="full-width">
+      <button class="btn-primary btn-sm" type="submit">Upload</button>
     </div>
   </form>
   <script>
@@ -236,43 +302,45 @@
 {% if can_edit %}
 <div class="card mt-4">
   <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Family access</h2>
-  <p class="text-sm mt-1" style="color:var(--text-muted)">Link parent logins to this student, and link the student's own login.</p>
+  <p class="text-sm mt-1" style="color:var(--text-muted)">Link parent logins and the student's own login.</p>
   {% if linked_parents.is_empty() %}
   <div class="empty-state">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3Z"/></svg>
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3Z"/></svg>
     <h3>No linked parents</h3>
-    <p>Link a parent account below so the family portal shows this student.</p>
+    <p>Link a parent account below.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Parent</th><th>Email</th><th>Relation</th><th></th></tr></thead>
-    <tbody>
-      {% for p in linked_parents %}
-      <tr>
-        <td>{{ p.full_name }}</td>
-        <td>{{ p.email }}</td>
-        <td>{{ p.relation }}</td>
-        <td style="text-align:right">
-          <form method="post" action="/parent-links/{{ p.id }}/delete" onsubmit="return confirm('Remove this parent link?')">
-            <button class="btn-ghost" type="submit">Remove</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-wrap mt-4">
+    <table class="table">
+      <thead><tr><th>Parent</th><th>Email</th><th>Relation</th><th></th></tr></thead>
+      <tbody>
+        {% for p in linked_parents %}
+        <tr>
+          <td>{{ p.full_name }}</td>
+          <td>{{ p.email }}</td>
+          <td>{{ p.relation }}</td>
+          <td style="text-align:right">
+            <form method="post" action="/parent-links/{{ p.id }}/delete" onsubmit="return confirm('Remove this parent link?')">
+              <button class="btn-ghost btn-sm" type="submit" style="color:var(--err)">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
-  <form method="post" action="/students/{{ student.id }}/link-parent" class="mt-4 grid gap-4 sm:grid-cols-2">
-    <div>
+  <form method="post" action="/students/{{ student.id }}/link-parent" class="form-grid mt-4 pt-4" style="border-top:1px solid var(--border)">
+    <div class="form-group">
       <label class="label" for="parent_email">Parent email</label>
       <input class="input" id="parent_email" name="parent_email" type="email" required placeholder="parent@example.com" autocomplete="off">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="relation">Relation (optional)</label>
       <input class="input" id="relation" name="relation" type="text" placeholder="guardian" maxlength="50" autocomplete="off">
     </div>
-    <div class="sm:col-span-2">
-      <button class="btn-primary" type="submit">Link parent</button>
+    <div class="full-width">
+      <button class="btn-primary btn-sm" type="submit">Link parent</button>
     </div>
   </form>
   <div class="mt-6 pt-6" style="border-top:1px solid var(--border)">
@@ -287,61 +355,18 @@
         <label class="label" for="student_email">Student email</label>
         <input class="input" id="student_email" name="email" type="email" required placeholder="student@example.com" autocomplete="off">
       </div>
-      <button class="btn-secondary" type="submit">Link student login</button>
+      <button class="btn-secondary btn-sm" type="submit">Link student login</button>
     </form>
   </div>
 </div>
 {% endif %}
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Lessons</h2>
-    <span class="pill pill-info">{{ lessons.len() }}</span>
-  </div>
-  {% if lessons.is_empty() %}
-  <div class="empty-state">
-    <h3>No lessons</h3>
-    <p>No lessons recorded for this student's classes.</p>
-  </div>
-  {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Title</th><th>Date</th></tr></thead>
-    <tbody>
-      {% for l in lessons %}
-      <tr><td><a href="/lessons/{{ l.id }}">{{ l.title }}</a></td><td>{{ l.date }}</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-</div>
-
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Activities</h2>
-    <span class="pill pill-info">{{ activities.len() }}</span>
-  </div>
-  {% if activities.is_empty() %}
-  <div class="empty-state">
-    <h3>No activities</h3>
-    <p>This student is not enrolled in any activity.</p>
-  </div>
-  {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Name</th><th>Kind</th></tr></thead>
-    <tbody>
-      {% for a in activities %}
-      <tr><td>{{ a.name }}</td><td>{{ a.kind }}</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-</div>
 
 {% if can_edit %}
-<div class="card mt-4" style="border-color:var(--err)">
+<div class="card mt-4" style="border-color:color-mix(in oklch, var(--err) 35%, transparent)">
   <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em;color:var(--err)">Danger zone</h2>
-  <p class="text-sm mt-2" style="color:var(--text-muted)">Deleting this student permanently removes the record and its enrollments, attendance, grades, invoices, and payments.</p>
+  <p class="text-sm mt-2" style="color:var(--text-muted)">Permanently removes this student and all enrollments, attendance, grades, invoices, and payments.</p>
   <form method="post" action="/students/{{ student.id }}/delete" class="mt-4" onsubmit="return confirm('Delete {{ student.full_name }}? This cannot be undone.')">
-    <button class="btn-secondary" type="submit" style="border-color:var(--err);color:var(--err)">Delete student</button>
+    <button class="btn-danger btn-sm" type="submit">Delete student</button>
   </form>
 </div>
 {% endif %}

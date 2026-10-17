@@ -6,45 +6,58 @@
 <div class="flex flex-wrap items-end justify-between gap-4">
   <div>
     <p class="eyebrow">Manage</p>
-    <h1 class="page-title mt-2">Students</h1>
-    <p class="page-sub">Search the directory, open a record for detail.</p>
+    <h1 class="page-title mt-1">Students</h1>
+    <p class="page-sub">{{ total }} records in the directory.</p>
   </div>
   {% if can_edit %}
-  <a class="btn-primary" href="/students/new">Add student</a>
+  <a class="btn-primary" href="/students/new">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    Add student
+  </a>
   {% endif %}
 </div>
 
 {% if let Some(msg) = flash %}
-<div class="{% if flash_kind == "error" %}flash-err{% else %}flash-info{% endif %} mt-6" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-4" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
 {% endif %}
 
-<div class="card mt-6">
-  <form method="get" action="/students" class="flex flex-wrap items-end gap-4">
+<div class="card mt-4">
+  <form method="get" action="/students" class="flex flex-wrap items-end gap-3">
     <div class="grow" style="min-width:220px">
       <label class="label" for="q">Search</label>
-      <input class="input" id="q" name="q" type="search" value="{{ q }}" placeholder="Name or admission number" autocomplete="off">
+      <input class="input" id="q" name="q" type="search" value="{{ q }}" placeholder="Name or admission number…" autocomplete="off">
     </div>
     <button class="btn-secondary" type="submit">Search</button>
+    {% if !q.is_empty() %}
+    <a class="btn-ghost" href="/students">Clear</a>
+    {% endif %}
   </form>
 </div>
 
+{% if students.is_empty() %}
 <div class="card mt-4">
-  {% if students.is_empty() %}
   <div class="empty-state">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin:0 auto"><path d="M12 4 2 9l10 5 10-5-10-5Z"/><path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5"/></svg>
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2 9l10 5 10-5-10-5Z"/><path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5"/></svg>
     <h3>No students found</h3>
-    <p>{% if q.is_empty() %}No students are enrolled yet. Add the first one to get started.{% else %}Nothing matches this search. Try a different name or admission number.{% endif %}</p>
-    {% if can_edit %}
-    <a class="btn-primary mt-4" href="/students/new">Add student</a>
-    {% endif %}
+    <p>{% if q.is_empty() %}No students are enrolled yet. Add the first one to get started.{% else %}Nothing matches "{{ q }}". Try a different search term.{% endif %}</p>
   </div>
-  {% else %}
+</div>
+{% else %}
+<div class="table-wrap mt-4">
   <table class="table">
-    <thead><tr><th>Admission no</th><th>Name</th><th>Status</th><th>Enrolled</th><th></th></tr></thead>
+    <thead>
+      <tr>
+        <th>Admission #</th>
+        <th>Name</th>
+        <th>Status</th>
+        <th>Enrolled</th>
+        <th style="width:1%"></th>
+      </tr>
+    </thead>
     <tbody>
       {% for s in students %}
       <tr>
-        <td>{{ s.admission_no }}</td>
+        <td><span class="font-mono">{{ s.admission_no }}</span></td>
         <td><a class="rowlink" href="/students/{{ s.id }}">{{ s.full_name }}</a></td>
         <td>
           {% if s.status.as_str() == "active" %}<span class="pill pill-ok">Active</span>
@@ -52,11 +65,12 @@
           {% else %}<span class="pill pill-info">Graduated</span>{% endif %}
         </td>
         <td>{{ s.enrolled_on }}</td>
-        <td style="text-align:right"><a class="btn-secondary" href="/students/{{ s.id }}">Open</a></td>
+        <td><a class="btn-ghost btn-sm" href="/students/{{ s.id }}">View</a></td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-  {% endif %}
+  {% include "partials/pagination.html" %}
 </div>
+{% endif %}
 {% endblock %}

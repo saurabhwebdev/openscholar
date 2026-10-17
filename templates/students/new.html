@@ -3,26 +3,31 @@
 {% block title %}{% if editing %}Edit student — OpenScholar{% else %}New student — OpenScholar{% endif %}{% endblock %}
 
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-4">
+<nav class="breadcrumb">
+  <a href="/students">Students</a>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+  <span>{% if editing %}Edit student{% else %}New student{% endif %}</span>
+</nav>
+
+<div class="flex flex-wrap items-end justify-between gap-4 mt-2">
   <div>
-    <p class="eyebrow">Manage · Students</p>
-    <h1 class="page-title mt-2">{% if editing %}Edit student{% else %}New student{% endif %}</h1>
+    <h1 class="page-title">{% if editing %}Edit student{% else %}New student{% endif %}</h1>
     <p class="page-sub">{% if editing %}Update the record, then save.{% else %}Add a student to the directory.{% endif %}</p>
   </div>
-  <a class="btn-secondary" href="/students">Back to list</a>
+  <a class="btn-ghost btn-sm" href="/students">Back to list</a>
 </div>
 
 {% if let Some(msg) = flash %}
-<div class="{% if flash_kind == "error" %}flash-err{% else %}flash-info{% endif %} mt-6" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
+<div class="{% if flash_kind == "error" %}flash-err{% else %}flash-info{% endif %} mt-4" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
 {% endif %}
 
 <div class="card mt-6">
-  <form method="post" action="{{ action }}" class="grid gap-4 md:grid-cols-2">
-    <div>
+  <form method="post" action="{{ action }}" class="form-grid">
+    <div class="form-group">
       <label class="label" for="admission_no">Admission number</label>
       <input class="input" id="admission_no" name="admission_no" type="text" required value="{{ admission_no }}" placeholder="ADM-001" autocomplete="off">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="status">Status</label>
       <select class="input" id="status" name="status">
         <option value="active" {% if status.as_str() == "active" %}selected{% endif %}>Active</option>
@@ -30,19 +35,19 @@
         <option value="graduated" {% if status.as_str() == "graduated" %}selected{% endif %}>Graduated</option>
       </select>
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="first_name">First name</label>
       <input class="input" id="first_name" name="first_name" type="text" required value="{{ first_name }}" autocomplete="off">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="last_name">Last name</label>
       <input class="input" id="last_name" name="last_name" type="text" required value="{{ last_name }}" autocomplete="off">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="date_of_birth">Date of birth</label>
       <input class="input" id="date_of_birth" name="date_of_birth" type="date" value="{{ date_of_birth }}">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="gender">Gender</label>
       <select class="input" id="gender" name="gender">
         <option value="" {% if gender.is_empty() %}selected{% endif %}>Not specified</option>
@@ -51,29 +56,29 @@
         <option value="other" {% if gender.as_str() == "other" %}selected{% endif %}>Other</option>
       </select>
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="guardian_name">Guardian name</label>
       <input class="input" id="guardian_name" name="guardian_name" type="text" value="{{ guardian_name }}" autocomplete="off">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="guardian_phone">Guardian phone</label>
       <input class="input" id="guardian_phone" name="guardian_phone" type="tel" value="{{ guardian_phone }}" autocomplete="off">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="guardian_email">Guardian email</label>
       <input class="input" id="guardian_email" name="guardian_email" type="email" value="{{ guardian_email }}" autocomplete="off">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="enrolled_on">Enrolled on</label>
       <input class="input" id="enrolled_on" name="enrolled_on" type="date" value="{{ enrolled_on }}">
     </div>
-    <div class="md:col-span-2">
+    <div class="form-group full-width">
       <label class="label" for="address">Address</label>
       <textarea class="input" id="address" name="address" rows="3">{{ address }}</textarea>
     </div>
-    <div class="md:col-span-2 flex flex-wrap gap-4">
+    <div class="form-actions full-width">
       <button class="btn-primary" type="submit">{% if editing %}Save changes{% else %}Add student{% endif %}</button>
-      <a class="btn-secondary" href="/students">Cancel</a>
+      <a class="btn-ghost" href="/students">Cancel</a>
     </div>
   </form>
 </div>

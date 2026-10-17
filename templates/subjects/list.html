@@ -9,7 +9,7 @@
     <h1 class="page-title mt-2">Subjects</h1>
     <p class="page-sub">Catalog of teachable subjects shared by every class timetable.</p>
   </div>
-  <a class="btn-secondary" href="/timetable">Timetable</a>
+  <a class="btn-secondary btn-sm" href="/timetable">Timetable</a>
 </div>
 
 {% if let Some(msg) = flash %}
@@ -18,17 +18,18 @@
 
 <div class="card mt-6">
   <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">All subjects</h2>
+    <h2 class="section-title">All subjects</h2>
     <span class="pill pill-info">{{ subjects.len() }} total</span>
   </div>
   {% if subjects.is_empty() %}
   <div class="empty-state">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4a1 1 0 0 0-1-1H6.5A2.5 2.5 0 0 0 4 5.5v14Z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4a1 1 0 0 0-1-1H6.5A2.5 2.5 0 0 0 4 5.5v14Z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>
     <h3>No subjects yet</h3>
     <p>Add the first subject below — classes and the timetable build on this catalog.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
+  <div class="table-wrap mt-4" style="border:none;box-shadow:none">
+  <table class="table">
     <thead><tr><th>Code</th><th>Name</th><th>Department</th><th>Status</th>{% if can_mutate %}<th></th>{% endif %}</tr></thead>
     <tbody>
       {% for s in subjects %}
@@ -36,14 +37,14 @@
         <td><strong>{{ s.code }}</strong></td>
         <td>{{ s.name }}</td>
         <td>{{ s.department }}</td>
-        <td>{% if s.in_use %}<span class="pill pill-info">In use</span>{% else %}<span style="color:var(--text-muted)">Unused</span>{% endif %}</td>
+        <td>{% if s.in_use %}<span class="pill pill-info">In use</span>{% else %}<span class="text-xs" style="color:var(--text-muted)">Unused</span>{% endif %}</td>
         {% if can_mutate %}
         <td style="text-align:right">
           {% if s.in_use %}
-          <span class="text-sm" style="color:var(--text-muted)">Assigned — cannot delete</span>
+          <span class="text-xs" style="color:var(--text-muted)">Assigned</span>
           {% else %}
           <form method="post" action="/subjects/{{ s.id }}/delete" style="display:inline" onsubmit="return confirm('Delete subject {{ s.code }}?');">
-            <button class="btn-ghost" type="submit" style="color:var(--err)">Delete</button>
+            <button class="btn-ghost btn-sm" type="submit" style="color:var(--err)">Delete</button>
           </form>
           {% endif %}
         </td>
@@ -52,23 +53,24 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% endif %}
 </div>
 
 {% if can_mutate %}
 <div class="card mt-4">
-  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">New subject</h2>
+  <h2 class="section-title">New subject</h2>
   <p class="text-sm mt-1" style="color:var(--text-muted)">Codes are unique — e.g. MAT, ENG, SCI.</p>
-  <form method="post" action="/subjects" class="mt-4 grid gap-4 sm:grid-cols-4">
-    <div>
+  <form method="post" action="/subjects" class="form-grid mt-4">
+    <div class="form-group">
       <label class="label" for="sub-code">Code</label>
       <input class="input" id="sub-code" name="code" type="text" required maxlength="16" placeholder="MAT">
     </div>
-    <div class="sm:col-span-2">
+    <div class="form-group sm:col-span-2">
       <label class="label" for="sub-name">Name</label>
       <input class="input" id="sub-name" name="name" type="text" required maxlength="120" placeholder="Mathematics">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="sub-dept">Department <span style="color:var(--text-muted)">(optional)</span></label>
       <input class="input" id="sub-dept" name="department" type="text" maxlength="120" placeholder="Sciences">
     </div>

@@ -16,8 +16,8 @@
 {% endif %}
 
 <div class="card mt-6">
-  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Upload</h2>
-  <form method="post" action="/attachments" class="mt-4 grid gap-4">
+  <h2 class="section-title">Upload</h2>
+  <form method="post" action="/attachments" class="mt-4 space-y-4">
     <input type="hidden" name="entity" value="{{ entity }}">
     <input type="hidden" name="entity_id" value="{{ entity_id }}">
     <input type="hidden" id="filename" name="filename" value="">
@@ -28,9 +28,7 @@
       <label class="label" for="file">File</label>
       <input class="input" id="file" type="file">
     </div>
-    <div>
-      <button class="btn-primary" type="submit">Upload</button>
-    </div>
+    <button class="btn-primary" type="submit">Upload</button>
   </form>
   <script>
   (function () {
@@ -53,9 +51,9 @@
   </script>
 </div>
 
-<div class="card mt-6">
+<div class="card mt-4">
   <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Files</h2>
+    <h2 class="section-title">Files</h2>
     <span class="pill pill-info">{{ attachments.len() }}</span>
   </div>
   {% if attachments.is_empty() %}
@@ -64,23 +62,25 @@
     <p>Upload a file to see it here.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Filename</th><th>Type</th><th style="text-align:right">Size</th><th></th></tr></thead>
+  <div class="table-wrap mt-4" style="border:none;box-shadow:none">
+  <table class="table">
+    <thead><tr><th>Filename</th><th>Type</th><th class="num">Size</th><th></th></tr></thead>
     <tbody>
       {% for a in attachments %}
       <tr>
-        <td><a href="{{ a.download_url }}">{{ a.filename }}</a></td>
-        <td>{{ a.content_type }}</td>
-        <td style="text-align:right">{{ a.size_bytes }}</td>
+        <td><a href="{{ a.download_url }}" style="color:var(--accent);text-decoration:none">{{ a.filename }}</a></td>
+        <td><code style="font-size:12px;padding:2px 6px;background:var(--surface-hover);border-radius:4px">{{ a.content_type }}</code></td>
+        <td class="num">{{ a.size_bytes }}</td>
         <td style="text-align:right">
           <form method="post" action="/attachments/{{ a.id }}/delete">
-            <button class="btn-ghost" type="submit">Delete</button>
+            <button class="btn-ghost btn-sm" type="submit" style="color:var(--err)">Delete</button>
           </form>
         </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% endif %}
 </div>
 {% endblock %}

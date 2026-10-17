@@ -3,60 +3,68 @@
 {% block title %}{% if editing %}Edit staff{% else %}New staff{% endif %} — OpenScholar{% endblock %}
 
 {% block content %}
-<div>
-  <p class="eyebrow">Manage · Staff</p>
-  <h1 class="page-title mt-2">{% if editing %}Edit {{ first_name }} {{ last_name }}{% else %}New staff member{% endif %}</h1>
-  <p class="page-sub">{% if editing %}Update directory details.{% else %}Add someone to the school directory.{% endif %}</p>
+<nav class="breadcrumb">
+  <a href="/staff">Staff</a>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+  <span>{% if editing %}Edit {{ first_name }} {{ last_name }}{% else %}New staff{% endif %}</span>
+</nav>
+
+<div class="flex flex-wrap items-end justify-between gap-4 mt-2">
+  <div>
+    <h1 class="page-title">{% if editing %}Edit {{ first_name }} {{ last_name }}{% else %}New staff member{% endif %}</h1>
+    <p class="page-sub">{% if editing %}Update directory details.{% else %}Add someone to the school directory.{% endif %}</p>
+  </div>
+  <a class="btn-ghost btn-sm" href="{{ cancel_url }}">Back</a>
 </div>
 
 {% if let Some(msg) = flash %}
-<div class="flash-err mt-6" role="alert">{{ msg }}</div>
+<div class="flash-err mt-4" role="alert">{{ msg }}</div>
 {% endif %}
 
 <div class="card mt-6">
-  <form method="post" action="{{ action }}" class="grid gap-4 md:grid-cols-2">
-    <div>
+  <form method="post" action="{{ action }}" class="form-grid">
+    <div class="form-group">
       <label class="label" for="employee_no">Employee number</label>
       <input class="input" id="employee_no" name="employee_no" required value="{{ employee_no }}" placeholder="EMP-001">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="status">Status</label>
       <select class="input" id="status" name="status">
         <option value="active" {% if status == "active" %}selected{% endif %}>Active</option>
         <option value="inactive" {% if status == "inactive" %}selected{% endif %}>Inactive</option>
       </select>
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="first_name">First name</label>
       <input class="input" id="first_name" name="first_name" required value="{{ first_name }}" placeholder="Ada">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="last_name">Last name</label>
       <input class="input" id="last_name" name="last_name" required value="{{ last_name }}" placeholder="Lovelace">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="email">Email</label>
       <input class="input" id="email" name="email" type="email" value="{{ email }}" placeholder="ada@school.edu">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="phone">Phone</label>
       <input class="input" id="phone" name="phone" type="tel" value="{{ phone }}" placeholder="+1 555 0100">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="job_title">Job title</label>
       <input class="input" id="job_title" name="job_title" value="{{ job_title }}" placeholder="Mathematics teacher">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="department">Department</label>
       <input class="input" id="department" name="department" value="{{ department }}" placeholder="Sciences">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="hired_on">Hired on</label>
       <input class="input" id="hired_on" name="hired_on" type="date" value="{{ hired_on }}">
     </div>
-    <div class="md:col-span-2 flex gap-2 mt-2">
+    <div class="form-actions full-width">
       <button class="btn-primary" type="submit">{% if editing %}Save changes{% else %}Create staff{% endif %}</button>
-      <a class="btn-secondary" href="{{ cancel_url }}">Cancel</a>
+      <a class="btn-ghost" href="{{ cancel_url }}">Cancel</a>
     </div>
   </form>
 </div>

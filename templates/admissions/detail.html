@@ -3,36 +3,41 @@
 {% block title %}{{ applicant.full_name }} — OpenScholar{% endblock %}
 
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-4">
+<nav class="breadcrumb">
+  <a href="/admissions">Admissions</a>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+  <span>{{ applicant.full_name }}</span>
+</nav>
+
+<div class="flex flex-wrap items-end justify-between gap-4 mt-2">
   <div>
-    <p class="eyebrow">Manage · Admissions</p>
-    <h1 class="page-title mt-2">{{ applicant.full_name }}</h1>
+    <h1 class="page-title">{{ applicant.full_name }}</h1>
     <p class="page-sub">Applying for {% if applicant.applying_for.is_empty() %}—{% else %}{{ applicant.applying_for }}{% endif %}</p>
   </div>
-  <div class="flex flex-wrap items-center gap-4">
+  <div class="flex flex-wrap items-center gap-3">
     {% if applicant.status.as_str() == "new" %}<span class="pill pill-info">New</span>
     {% else if applicant.status.as_str() == "reviewing" %}<span class="pill pill-warn">Reviewing</span>
     {% else if applicant.status.as_str() == "accepted" %}<span class="pill pill-ok">Accepted</span>
     {% else if applicant.status.as_str() == "rejected" %}<span class="pill pill-err">Rejected</span>
     {% else %}<span class="pill pill-ok">Enrolled</span>{% endif %}
-    <a class="btn-secondary" href="/admissions">Back to pipeline</a>
+    <a class="btn-ghost btn-sm" href="/admissions">Back to pipeline</a>
   </div>
 </div>
 
 {% if let Some(msg) = flash %}
-<div class="{% if flash_kind == "error" %}flash-err{% else %}flash-info{% endif %} mt-6" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
+<div class="{% if flash_kind == "error" %}flash-err{% else %}flash-info{% endif %} mt-4" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
 {% endif %}
 
 <div class="card mt-6">
   <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Details</h2>
-  <dl class="mt-4 space-y-4 text-sm">
-    <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Date of birth</dt><dd class="font-medium">{% if applicant.date_of_birth.is_empty() %}—{% else %}{{ applicant.date_of_birth }}{% endif %}</dd></div>
-    <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Gender</dt><dd class="font-medium">{% if applicant.gender.is_empty() %}—{% else %}{{ applicant.gender }}{% endif %}</dd></div>
-    <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Guardian</dt><dd class="font-medium">{% if applicant.guardian_name.is_empty() %}—{% else %}{{ applicant.guardian_name }}{% endif %}</dd></div>
-    <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Guardian phone</dt><dd class="font-medium">{% if applicant.guardian_phone.is_empty() %}—{% else %}{{ applicant.guardian_phone }}{% endif %}</dd></div>
-    <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Guardian email</dt><dd class="font-medium">{% if applicant.guardian_email.is_empty() %}—{% else %}{{ applicant.guardian_email }}{% endif %}</dd></div>
-    <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Address</dt><dd class="font-medium">{% if applicant.address.is_empty() %}—{% else %}{{ applicant.address }}{% endif %}</dd></div>
-    <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Notes</dt><dd class="font-medium">{% if applicant.notes.is_empty() %}—{% else %}{{ applicant.notes }}{% endif %}</dd></div>
+  <dl class="mt-4">
+    <div class="detail-row"><dt>Date of birth</dt><dd>{% if applicant.date_of_birth.is_empty() %}—{% else %}{{ applicant.date_of_birth }}{% endif %}</dd></div>
+    <div class="detail-row"><dt>Gender</dt><dd>{% if applicant.gender.is_empty() %}—{% else %}{{ applicant.gender }}{% endif %}</dd></div>
+    <div class="detail-row"><dt>Guardian</dt><dd>{% if applicant.guardian_name.is_empty() %}—{% else %}{{ applicant.guardian_name }}{% endif %}</dd></div>
+    <div class="detail-row"><dt>Guardian phone</dt><dd>{% if applicant.guardian_phone.is_empty() %}—{% else %}{{ applicant.guardian_phone }}{% endif %}</dd></div>
+    <div class="detail-row"><dt>Guardian email</dt><dd>{% if applicant.guardian_email.is_empty() %}—{% else %}{{ applicant.guardian_email }}{% endif %}</dd></div>
+    <div class="detail-row"><dt>Address</dt><dd>{% if applicant.address.is_empty() %}—{% else %}{{ applicant.address }}{% endif %}</dd></div>
+    <div class="detail-row"><dt>Notes</dt><dd>{% if applicant.notes.is_empty() %}—{% else %}{{ applicant.notes }}{% endif %}</dd></div>
   </dl>
 </div>
 
@@ -44,17 +49,17 @@
     <p>This application is at a terminal status{% if applicant.status.as_str() == "enrolled" %} and is now a student{% endif %}.</p>
   </div>
   {% else %}
-  <div class="flex flex-wrap gap-4 mt-4">
+  <div class="flex flex-wrap gap-3 mt-4">
     {% for s in next %}
     <form method="post" action="/applicants/{{ applicant.id }}/status">
       <input type="hidden" name="status" value="{{ s }}">
-      <button class="btn-secondary" type="submit">Move to {{ s }}</button>
+      <button class="btn-secondary btn-sm" type="submit">Move to {{ s }}</button>
     </form>
     {% endfor %}
   </div>
   {% endif %}
   {% if can_enroll %}
-  <div class="mt-4">
+  <div class="mt-4 pt-4" style="border-top:1px solid var(--border)">
     <a class="btn-primary" href="/applicants/{{ applicant.id }}/enroll">Enroll as student</a>
   </div>
   {% endif %}

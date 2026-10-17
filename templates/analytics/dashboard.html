@@ -5,109 +5,126 @@
 {% block content %}
 <div class="flex flex-wrap items-end justify-between gap-4">
   <div>
-    <p class="eyebrow">System · Analytics</p>
-    <h1 class="page-title mt-2">Analytics</h1>
+    <p class="eyebrow">System</p>
+    <h1 class="page-title mt-1">Analytics</h1>
     <p class="page-sub">At-risk students, attendance trend, and fee summary.</p>
   </div>
-  <a class="btn-secondary" href="/analytics/export">Export JSON</a>
+  <a class="btn-secondary" href="/analytics/export">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+    Export JSON
+  </a>
 </div>
 
 <div class="stat-grid mt-6">
-  <div class="card">
+  <div class="stat-card card">
+    <span class="icon-tile" style="margin-bottom:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2 9l10 5 10-5-10-5Z"/><path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5"/></svg></span>
     <div class="stat-value">{{ students }}</div>
     <div class="stat-label">Active students</div>
   </div>
-  <div class="card">
+  <div class="stat-card card">
+    <span class="icon-tile" style="margin-bottom:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></span>
     <div class="stat-value">{{ staff }}</div>
     <div class="stat-label">Active staff</div>
   </div>
-  <div class="card">
+  <div class="stat-card card">
+    <span class="icon-tile" style="margin-bottom:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4M8 7.5h2m4 0h2M8 11.5h2m4 0h2"/></svg></span>
     <div class="stat-value">{{ classes }}</div>
     <div class="stat-label">Classes</div>
   </div>
-  <div class="card">
+  <div class="stat-card card">
+    <span class="icon-tile" style="margin-bottom:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/></svg></span>
     <div class="stat-value">{{ outstanding }}</div>
     <div class="stat-label">Outstanding fees</div>
   </div>
 </div>
 
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Fee summary</h2>
+<div class="card mt-6">
+  <h2 class="section-title">Fee summary</h2>
+  <div class="grid gap-4 mt-4 sm:grid-cols-3">
+    <div style="padding:12px 0;border-bottom:2px solid var(--accent)">
+      <div class="text-xs font-semibold text-secondary" style="text-transform:uppercase;letter-spacing:0.06em">Billed</div>
+      <div class="text-lg font-bold mt-1">{{ billed }}</div>
+    </div>
+    <div style="padding:12px 0;border-bottom:2px solid var(--ok)">
+      <div class="text-xs font-semibold text-secondary" style="text-transform:uppercase;letter-spacing:0.06em">Paid</div>
+      <div class="text-lg font-bold mt-1" style="color:var(--ok)">{{ paid }}</div>
+    </div>
+    <div style="padding:12px 0;border-bottom:2px solid var(--warn)">
+      <div class="text-xs font-semibold text-secondary" style="text-transform:uppercase;letter-spacing:0.06em">Outstanding</div>
+      <div class="text-lg font-bold mt-1" style="color:var(--warn)">{{ outstanding }}</div>
+    </div>
   </div>
-  <p class="text-sm mt-2" style="color:var(--text-muted)">Billed: {{ billed }} · Paid: {{ paid }} · Outstanding: {{ outstanding }}</p>
 </div>
 
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">At-risk students</h2>
-    <span class="pill pill-info">{{ at_risk.len() }}</span>
+<div class="mt-6">
+  <div class="flex items-center justify-between gap-4 mb-3">
+    <h2 class="section-title">At-risk students</h2>
+    <span class="pill {% if at_risk.is_empty() %}pill-ok{% else %}pill-err{% endif %}">{{ at_risk.len() }}</span>
   </div>
   {% if at_risk.is_empty() %}
-  <div class="empty-state">
-    <h3>No at-risk students</h3>
-    <p>All students are in good standing.</p>
-  </div>
+  <div class="card"><div class="empty-state"><h3>No at-risk students</h3><p>All students are in good standing.</p></div></div>
   {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Name</th><th>Admission</th><th style="text-align:right">Fee balance</th><th style="text-align:right">Attendance</th><th style="text-align:right">Avg grade</th><th>Reasons</th></tr></thead>
-    <tbody>
-      {% for r in at_risk %}
-      <tr>
-        <td>{{ r.full_name }}</td>
-        <td>{{ r.admission_no }}</td>
-        <td style="text-align:right">{{ r.fee_balance }}</td>
-        <td style="text-align:right">{{ r.attendance_rate }}</td>
-        <td style="text-align:right">{{ r.avg_grade }}</td>
-        <td>{{ r.reasons }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Name</th><th>Admission</th><th class="num">Fee balance</th><th class="num">Attendance</th><th class="num">Avg grade</th><th>Reasons</th></tr></thead>
+      <tbody>
+        {% for r in at_risk %}
+        <tr>
+          <td class="font-medium">{{ r.full_name }}</td>
+          <td class="text-secondary">{{ r.admission_no }}</td>
+          <td class="num">{{ r.fee_balance }}</td>
+          <td class="num">{{ r.attendance_rate }}</td>
+          <td class="num">{{ r.avg_grade }}</td>
+          <td><span class="pill pill-warn" style="font-size:11px">{{ r.reasons }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
 </div>
 
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Attendance trend (last 14 days)</h2>
-    <span class="pill pill-info">{{ trend.len() }} days</span>
+<div class="grid gap-6 mt-6 lg:grid-cols-2">
+  <div>
+    <div class="flex items-center justify-between gap-4 mb-3">
+      <h2 class="section-title">Attendance trend (14 days)</h2>
+      <span class="pill pill-neutral">{{ trend.len() }} days</span>
+    </div>
+    {% if trend.is_empty() %}
+    <div class="card"><div class="empty-state"><h3>No attendance data</h3><p>Attendance records will appear here.</p></div></div>
+    {% else %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Date</th><th class="num">Present</th><th class="num">Absent</th><th class="num">Total</th></tr></thead>
+        <tbody>
+          {% for t in trend %}
+          <tr><td>{{ t.date }}</td><td class="num" style="color:var(--ok)">{{ t.present }}</td><td class="num" style="color:var(--err)">{{ t.absent }}</td><td class="num">{{ t.total }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
   </div>
-  {% if trend.is_empty() %}
-  <div class="empty-state">
-    <h3>No attendance data</h3>
-    <p>Attendance records will appear here.</p>
-  </div>
-  {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Date</th><th style="text-align:right">Present</th><th style="text-align:right">Absent</th><th style="text-align:right">Total</th></tr></thead>
-    <tbody>
-      {% for t in trend %}
-      <tr><td>{{ t.date }}</td><td style="text-align:right">{{ t.present }}</td><td style="text-align:right">{{ t.absent }}</td><td style="text-align:right">{{ t.total }}</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-</div>
 
-<div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Grade summary by class</h2>
-    <span class="pill pill-info">{{ grades.len() }}</span>
+  <div>
+    <div class="flex items-center justify-between gap-4 mb-3">
+      <h2 class="section-title">Grade summary by class</h2>
+      <span class="pill pill-neutral">{{ grades.len() }}</span>
+    </div>
+    {% if grades.is_empty() %}
+    <div class="card"><div class="empty-state"><h3>No grade data</h3><p>Grades will appear here once assessments are graded.</p></div></div>
+    {% else %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Class</th><th class="num">Average</th></tr></thead>
+        <tbody>
+          {% for g in grades %}
+          <tr><td class="font-medium">{{ g.class_name }}</td><td class="num">{{ g.avg }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
   </div>
-  {% if grades.is_empty() %}
-  <div class="empty-state">
-    <h3>No grade data</h3>
-    <p>Grades will appear here once assessments are graded.</p>
-  </div>
-  {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Class</th><th style="text-align:right">Avg</th></tr></thead>
-    <tbody>
-      {% for g in grades %}
-      <tr><td>{{ g.class_name }}</td><td style="text-align:right">{{ g.avg }}</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
 </div>
 {% endblock %}

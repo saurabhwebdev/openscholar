@@ -10,9 +10,9 @@
     <p class="page-sub">Weekly periods, Monday to Friday — pick a class to view or book lessons.</p>
   </div>
   <div class="flex gap-2">
-    <a class="btn-secondary" href="/subjects">Subjects</a>
-    <a class="btn-secondary" href="/timetable/teacher">By teacher</a>
-    <button class="btn-secondary no-print" type="button" onclick="window.print()">Print</button>
+    <a class="btn-secondary btn-sm" href="/subjects">Subjects</a>
+    <a class="btn-secondary btn-sm" href="/timetable/teacher">By teacher</a>
+    <button class="btn-ghost btn-sm no-print" type="button" onclick="window.print()">Print</button>
   </div>
 </div>
 
@@ -30,19 +30,19 @@
         {% endfor %}
       </select>
     </div>
-    <button class="btn-secondary" type="submit">Switch</button>
+    <button class="btn-secondary btn-sm" type="submit">Switch</button>
   </form>
 </div>
 
 {% if has_class %}
 <div class="card mt-4">
   <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">{{ class_name }}</h2>
-    <span class="pill pill-info">Mon – Fri</span>
+    <h2 class="section-title">{{ class_name }}</h2>
+    <span class="pill pill-neutral">Mon – Fri</span>
   </div>
   {% if rows.is_empty() %}
   <div class="empty-state">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4m8-4v4"/></svg>
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4m8-4v4"/></svg>
     <h3>No periods configured</h3>
     <p>Run the timetable migration so the P1–P8 weekly grid exists, then book lessons below.</p>
   </div>
@@ -68,7 +68,7 @@
             {% endif %}
             {% if can_mutate %}
             <form method="post" action="/timetable/slots/{{ slot.id }}/delete" onsubmit="return confirm('Remove {{ slot.subject_code }} from this period?');">
-              <button class="btn-ghost" type="submit" style="color:var(--err);min-height:32px;padding:0 8px">Remove</button>
+              <button class="btn-ghost btn-sm" type="submit" style="color:var(--err);padding:0 6px">Remove</button>
             </form>
             {% endif %}
           </div>
@@ -87,12 +87,12 @@
 
 {% if can_mutate %}
 <div class="card mt-4">
-  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Book a lesson</h2>
+  <h2 class="section-title">Book a lesson</h2>
   <p class="text-sm mt-1" style="color:var(--text-muted)">A teacher cannot teach two classes in the same period — clashes are refused.</p>
   {% if subjects.is_empty() %}
   <div class="empty-state">
     <h3>No subjects to schedule</h3>
-    <p><a href="/subjects">Add subjects</a> first, then come back to book lessons.</p>
+    <p><a href="/subjects" style="color:var(--accent)">Add subjects</a> first, then come back to book lessons.</p>
   </div>
   {% elif periods.is_empty() %}
   <div class="empty-state">
@@ -100,9 +100,9 @@
     <p>The weekly periods are missing — run the timetable migration.</p>
   </div>
   {% else %}
-  <form method="post" action="/timetable/slots" class="mt-4 grid gap-4 sm:grid-cols-2">
+  <form method="post" action="/timetable/slots" class="form-grid mt-4">
     <input type="hidden" name="class_id" value="{{ selected_class.unwrap_or(0) }}">
-    <div>
+    <div class="form-group">
       <label class="label" for="slot-subject">Subject</label>
       <select class="input" id="slot-subject" name="subject_id" required>
         <option value="">Select subject…</option>
@@ -111,7 +111,7 @@
         {% endfor %}
       </select>
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="slot-period">Period</label>
       <select class="input" id="slot-period" name="period_id" required>
         <option value="">Select period…</option>
@@ -120,7 +120,7 @@
         {% endfor %}
       </select>
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="slot-teacher">Teacher <span style="color:var(--text-muted)">(optional)</span></label>
       <select class="input" id="slot-teacher" name="teacher_id">
         <option value="">Unassigned…</option>
@@ -129,7 +129,7 @@
         {% endfor %}
       </select>
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="slot-room">Room <span style="color:var(--text-muted)">(optional)</span></label>
       <input class="input" id="slot-room" name="room" type="text" maxlength="32" placeholder="Room 4">
     </div>
@@ -141,11 +141,11 @@
 </div>
 
 <div class="card mt-4">
-  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Assigned subjects</h2>
+  <h2 class="section-title">Assigned subjects</h2>
   {% if assigned.is_empty() %}
   <p class="text-sm mt-1" style="color:var(--text-muted)">No subjects linked yet — booking a lesson links its subject automatically.</p>
   {% else %}
-  <div class="chip-row">
+  <div class="chip-row mt-3">
     {% for a in assigned %}
     <span class="chip"><strong>{{ a.code }}</strong><span>{{ a.name }}{% if let Some(t) = a.teacher_name %} · {{ t }}{% endif %}</span></span>
     {% endfor %}
@@ -157,7 +157,7 @@
 {% else %}
 <div class="card mt-4">
   <div class="empty-state">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4M8 7.5h2m4 0h2M8 11.5h2m4 0h2"/></svg>
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4M8 7.5h2m4 0h2M8 11.5h2m4 0h2"/></svg>
     <h3>No class selected</h3>
     <p>Create a class in the current school year first, then build its timetable.</p>
     <a class="btn-primary mt-4" href="/classes">Go to classes</a>

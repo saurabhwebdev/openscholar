@@ -3,37 +3,40 @@
 {% block title %}Fee categories — OpenScholar{% endblock %}
 
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-4">
+<div class="breadcrumb">
+  <a href="/fees">Fees</a>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+  <span>Categories</span>
+</div>
+
+<div class="flex flex-wrap items-end justify-between gap-4 mt-3">
   <div>
-    <p class="eyebrow">Record · Fees</p>
-    <h1 class="page-title mt-2">Fee categories</h1>
-    <p class="page-sub">Manage fee categories, discounts are applied per category or student.</p>
+    <h1 class="page-title">Fee categories</h1>
+    <p class="page-sub">Manage fee categories and discount groupings.</p>
   </div>
-  <a class="btn-ghost" href="/fees">All fees</a>
 </div>
 
 {% if let Some(msg) = flash %}
-<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-4"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
 {% endif %}
 
-<div class="card mt-6">
-  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Categories</h2>
+<div class="table-wrap mt-4">
   {% if categories.is_empty() %}
   <div class="empty-state">
     <h3>No categories yet</h3>
     <p>Create your first fee category below.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
+  <table class="table">
     <thead><tr><th>Name</th><th>Description</th><th></th></tr></thead>
     <tbody>
       {% for c in categories %}
       <tr>
-        <td>{{ c.name }}</td>
-        <td>{% if let Some(d) = c.description %}{{ d }}{% else %}—{% endif %}</td>
-        <td style="text-align:right">
+        <td class="font-medium">{{ c.name }}</td>
+        <td style="color:var(--text-secondary)">{% if let Some(d) = c.description %}{{ d }}{% else %}—{% endif %}</td>
+        <td class="num">
           <form method="post" action="/fees/categories/{{ c.id }}/delete" onsubmit="return confirm('Delete this category?')">
-            <button class="btn-ghost" type="submit">Delete</button>
+            <button class="btn-danger btn-sm" type="submit">Delete</button>
           </form>
         </td>
       </tr>
@@ -45,17 +48,17 @@
 
 {% if can_mutate %}
 <div class="card mt-4">
-  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">New category</h2>
-  <form method="post" action="/fees/categories" class="mt-4 grid gap-4 sm:grid-cols-2">
-    <div>
+  <h2 class="section-title">New category</h2>
+  <form method="post" action="/fees/categories" class="form-grid mt-3">
+    <div class="form-group">
       <label class="label" for="name">Name</label>
       <input class="input" id="name" name="name" type="text" required maxlength="120">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="description">Description (optional)</label>
       <input class="input" id="description" name="description" type="text" maxlength="500">
     </div>
-    <div class="sm:col-span-2">
+    <div class="form-actions full-width">
       <button class="btn-primary" type="submit">Create category</button>
     </div>
   </form>

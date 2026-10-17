@@ -7,6 +7,7 @@ pub mod db;
 pub mod error;
 pub mod models;
 pub mod notifications;
+pub mod pagination;
 pub mod routes;
 pub mod seed;
 pub mod seed_demo;

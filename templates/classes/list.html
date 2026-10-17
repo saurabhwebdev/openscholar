@@ -6,21 +6,24 @@
 <div class="flex flex-wrap items-end justify-between gap-4">
   <div>
     <p class="eyebrow">Manage</p>
-    <h1 class="page-title mt-2">Classes</h1>
+    <h1 class="page-title mt-1">Classes</h1>
     <p class="page-sub">Organize classes by school year and manage enrollment.</p>
   </div>
   {% if can_mutate %}
-  <a class="btn-primary" href="/classes/new{% if let Some(y) = selected_year %}?year={{ y }}{% endif %}">New class</a>
+  <a class="btn-primary" href="/classes/new{% if let Some(y) = selected_year %}?year={{ y }}{% endif %}">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    New class
+  </a>
   {% endif %}
 </div>
 
 {% if let Some(msg) = flash %}
-<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-4"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
 {% endif %}
 
-<div class="card mt-6">
+<div class="card mt-4">
   <form method="get" action="/classes" class="flex flex-wrap items-end gap-4">
-    <div class="flex-1" style="min-width:220px">
+    <div class="grow" style="min-width:220px">
       <label class="label" for="year">School year</label>
       <select class="input" id="year" name="year" onchange="this.form.submit()">
         {% for y in years %}
@@ -32,37 +35,43 @@
   </form>
 </div>
 
+{% if classes.is_empty() %}
 <div class="card mt-4">
-  <div class="flex items-center justify-between gap-4">
-    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Classes</h2>
-    <span class="pill pill-info">{{ classes.len() }} total</span>
-  </div>
-  {% if classes.is_empty() %}
   <div class="empty-state">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4M8 7.5h2m4 0h2M8 11.5h2m4 0h2"/></svg>
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4M8 7.5h2m4 0h2M8 11.5h2m4 0h2"/></svg>
     <h3>No classes yet</h3>
     <p>Create the first class for this school year to start enrolling students.</p>
     {% if can_mutate %}
     <a class="btn-primary mt-4" href="/classes/new{% if let Some(y) = selected_year %}?year={{ y }}{% endif %}">New class</a>
     {% endif %}
   </div>
-  {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Name</th><th>Teacher</th><th>Room</th><th style="text-align:right">Enrolled</th><th></th></tr></thead>
+</div>
+{% else %}
+<div class="table-wrap mt-4">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Teacher</th>
+        <th>Room</th>
+        <th style="text-align:right">Enrolled</th>
+        <th style="width:1%"></th>
+      </tr>
+    </thead>
     <tbody>
       {% for c in classes %}
       <tr>
-        <td><a href="/classes/{{ c.id }}">{{ c.name }}</a></td>
+        <td><a class="rowlink" href="/classes/{{ c.id }}">{{ c.name }}</a></td>
         <td>{% if let Some(t) = c.teacher_name %}{{ t }}{% else %}<span style="color:var(--text-muted)">Unassigned</span>{% endif %}</td>
         <td>{% if let Some(r) = c.room %}{{ r }}{% else %}—{% endif %}</td>
         <td style="text-align:right">{{ c.enrolled }}{% if let Some(cap) = c.capacity %} / {{ cap }}{% endif %}</td>
-        <td style="text-align:right"><a class="btn-ghost" href="/classes/{{ c.id }}">Open</a></td>
+        <td><a class="btn-ghost btn-sm" href="/classes/{{ c.id }}">Open</a></td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-  {% endif %}
 </div>
+{% endif %}
 
 <div class="card mt-4">
   <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">School years</h2>
@@ -73,46 +82,50 @@
     <p>Create a year below to get started.</p>
   </div>
   {% else %}
-  <table class="table mt-4">
-    <thead><tr><th>Name</th><th>Status</th>{% if can_mutate %}<th></th>{% endif %}</tr></thead>
-    <tbody>
-      {% for y in years %}
-      <tr>
-        <td>{{ y.name }}</td>
-        <td>{% if y.is_current %}<span class="pill pill-info">Current</span>{% else %}<span style="color:var(--text-muted)">Archived</span>{% endif %}</td>
-        {% if can_mutate %}
-        <td style="text-align:right">
-          {% if y.is_current %}
-          {% else %}
-          <form method="post" action="/school-years/{{ y.id }}/set-current" style="display:inline">
-            <button class="btn-secondary" type="submit">Set current</button>
-          </form>
+  <div class="table-wrap mt-4">
+    <table class="table">
+      <thead><tr><th>Name</th><th>Status</th>{% if can_mutate %}<th></th>{% endif %}</tr></thead>
+      <tbody>
+        {% for y in years %}
+        <tr>
+          <td>{{ y.name }}</td>
+          <td>{% if y.is_current %}<span class="pill pill-ok">Current</span>{% else %}<span style="color:var(--text-muted)">Archived</span>{% endif %}</td>
+          {% if can_mutate %}
+          <td style="text-align:right">
+            <div class="flex items-center justify-end gap-2">
+              {% if y.is_current %}
+              {% else %}
+              <form method="post" action="/school-years/{{ y.id }}/set-current" style="display:inline">
+                <button class="btn-ghost btn-sm" type="submit">Set current</button>
+              </form>
+              {% endif %}
+              <form method="post" action="/school-years/{{ y.id }}/delete" style="display:inline" onsubmit="return confirm('Delete this school year? Its classes and everything under them will be permanently removed.');">
+                <button class="btn-ghost btn-sm" type="submit" style="color:var(--err)">Delete</button>
+              </form>
+            </div>
+          </td>
           {% endif %}
-          <form method="post" action="/school-years/{{ y.id }}/delete" style="display:inline" onsubmit="return confirm('Delete this school year? Its classes and everything under them will be permanently removed. Only empty, non-current years can be deleted.');">
-            <button class="btn-ghost" type="submit" style="color:var(--err)">Delete</button>
-          </form>
-        </td>
-        {% endif %}
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
   {% if can_mutate %}
-  <form method="post" action="/school-years" class="mt-6 pt-6 grid gap-4 sm:grid-cols-4" style="border-top:1px solid var(--border)">
-    <div>
+  <form method="post" action="/school-years" class="form-grid mt-6 pt-6" style="border-top:1px solid var(--border)">
+    <div class="form-group">
       <label class="label" for="sy-name">Year name</label>
       <input class="input" id="sy-name" name="name" type="text" required placeholder="2025/2026">
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="sy-start">Start date</label>
       <input class="input" id="sy-start" name="start_date" type="date" required>
     </div>
-    <div>
+    <div class="form-group">
       <label class="label" for="sy-end">End date</label>
       <input class="input" id="sy-end" name="end_date" type="date" required>
     </div>
-    <div class="flex items-end">
+    <div class="form-group" style="display:flex;align-items:flex-end">
       <button class="btn-primary" type="submit">Add year</button>
     </div>
   </form>
