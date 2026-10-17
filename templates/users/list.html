@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Users — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">System</p>
+    <h1 class="page-title mt-2">Users</h1>
+    <p class="page-sub">Login accounts and roles. Admins only.</p>
+  </div>
+  <div class="flex items-center gap-2">
+    <span class="pill pill-info">{{ users.len() }} total</span>
+    <a class="btn-secondary" href="/outbox">Email outbox</a>
+  </div>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">New user</h2>
+  <p class="text-sm mt-1" style="color:var(--text-muted)">Create a login account. Passwords need at least 8 characters.</p>
+  <form method="post" action="/users" class="mt-4 grid gap-4 sm:grid-cols-2">
+    <div>
+      <label class="label" for="u-full-name">Full name</label>
+      <input class="input" id="u-full-name" name="full_name" type="text" required autocomplete="name" placeholder="Ada Lovelace">
+    </div>
+    <div>
+      <label class="label" for="u-email">Email</label>
+      <input class="input" id="u-email" name="email" type="email" required autocomplete="email" placeholder="ada@example.com">
+    </div>
+    <div>
+      <label class="label" for="u-role">Role</label>
+      <select class="input" id="u-role" name="role">
+        <option value="admin">admin</option>
+        <option value="teacher">teacher</option>
+        <option value="staff">staff</option>
+        <option value="parent">parent</option>
+        <option value="student">student</option>
+      </select>
+    </div>
+    <div>
+      <label class="label" for="u-password">Password</label>
+      <input class="input" id="u-password" name="password" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
+    </div>
+    <div class="sm:col-span-2">
+      <button class="btn-primary" type="submit">Create user</button>
+    </div>
+  </form>
+</div>
+
+<div class="card mt-4" style="padding:0;overflow:hidden">
+  {% if users.is_empty() %}
+  <div class="empty-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3Z"/></svg>
+    <h3>No users yet</h3>
+    <p>Create the first login account with the form above.</p>
+  </div>
+  {% else %}
+  <table class="table">
+    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Active</th><th>Created</th><th></th></tr></thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.full_name }}{% if u.id == current_user_id %} <span class="pill pill-info">you</span>{% endif %}</td>
+        <td>{{ u.email }}</td>
+        <td>{% if u.role == "admin" %}<span class="pill pill-info">admin</span>{% else if u.role == "teacher" %}<span class="pill pill-warn">teacher</span>{% else %}<span class="pill">staff</span>{% endif %}</td>
+        <td>{% if u.active %}<span class="pill pill-ok">Active</span>{% else %}<span class="pill pill-err">Inactive</span>{% endif %}</td>
+        <td>{{ u.created }}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <form method="post" action="/users/{{ u.id }}/toggle-active" style="display:inline">
+            <button class="btn-secondary" type="submit">{% if u.active %}Deactivate{% else %}Activate{% endif %}</button>
+          </form>
+          <form method="post" action="/users/{{ u.id }}/delete" style="display:inline" onsubmit="return confirm('Delete this user?');">
+            <button class="btn-ghost" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

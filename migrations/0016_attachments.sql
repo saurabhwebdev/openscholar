@@ -1,0 +1,2 @@
+CREATE TABLE IF NOT EXISTS attachments (id BIGSERIAL PRIMARY KEY, entity TEXT NOT NULL, entity_id BIGINT NOT NULL, filename TEXT NOT NULL, content_type TEXT NULL, size_bytes BIGINT NOT NULL DEFAULT 0, storage_key TEXT NOT NULL, uploaded_by BIGINT NULL REFERENCES users(id) ON DELETE SET NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS idx_attachments_entity ON attachments (entity, entity_id);

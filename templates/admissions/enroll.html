@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Enroll {{ applicant.full_name }} — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Manage · Admissions</p>
+    <h1 class="page-title mt-2">Enroll {{ applicant.full_name }}</h1>
+    <p class="page-sub">Creates a student record and marks the application enrolled.</p>
+  </div>
+  <a class="btn-secondary" href="/applicants/{{ applicant.id }}">Back to application</a>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% else %}flash-info{% endif %} mt-6" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6">
+  <form method="post" action="/applicants/{{ applicant.id }}/enroll" class="grid gap-4">
+    <div>
+      <label class="label" for="admission_no">Admission number</label>
+      <input class="input" id="admission_no" name="admission_no" type="text" required value="{{ admission_no }}" autocomplete="off">
+    </div>
+    <div class="flex flex-wrap gap-4">
+      <button class="btn-primary" type="submit">Enroll student</button>
+      <a class="btn-secondary" href="/applicants/{{ applicant.id }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

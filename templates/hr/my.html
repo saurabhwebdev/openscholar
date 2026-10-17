@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}My HR — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">HR · My record</p>
+    <h1 class="page-title mt-2">My HR</h1>
+    <p class="page-sub">{{ staff_name }}</p>
+  </div>
+</div>
+
+{% if !has_staff %}
+<div class="card mt-6">
+  <div class="empty-state">
+    <h3>No staff record linked</h3>
+    <p>Your login account is not linked to a staff record. Contact an administrator.</p>
+  </div>
+</div>
+{% else %}
+
+<div class="grid gap-4 mt-6 sm:grid-cols-4">
+  <div class="card"><div class="text-2xl font-semibold">{{ summary_present }}</div><div class="text-sm" style="color:var(--text-muted)">Present this month</div></div>
+  <div class="card"><div class="text-2xl font-semibold">{{ summary_absent }}</div><div class="text-sm" style="color:var(--text-muted)">Absent</div></div>
+  <div class="card"><div class="text-2xl font-semibold">{{ summary_late }}</div><div class="text-sm" style="color:var(--text-muted)">Late</div></div>
+  <div class="card"><div class="text-2xl font-semibold">{{ summary_leave }}</div><div class="text-sm" style="color:var(--text-muted)">Leave</div></div>
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">My attendance ({{ month }})</h2>
+    <span class="pill pill-info">{{ attendance.len() }} records</span>
+  </div>
+  {% if attendance.is_empty() %}
+  <div class="empty-state"><h3>No attendance recorded</h3><p>Nothing recorded for this month yet.</p></div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Date</th><th>Status</th><th>Note</th></tr></thead>
+    <tbody>
+      {% for a in attendance %}
+      <tr>
+        <td>{{ a.date }}</td>
+        <td>
+          {% if a.status == "present" %}<span class="pill pill-ok">Present</span>
+          {% elif a.status == "absent" %}<span class="pill pill-err">Absent</span>
+          {% elif a.status == "late" %}<span class="pill pill-warn">Late</span>
+          {% else %}<span class="pill pill-info">Leave</span>{% endif %}
+        </td>
+        <td style="color:var(--text-muted)">{{ a.note }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">My leave requests</h2>
+    <span class="pill pill-info">{{ leaves.len() }}</span>
+  </div>
+  {% if leaves.is_empty() %}
+  <div class="empty-state"><h3>No leave requests</h3><p>None submitted yet.</p></div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Type</th><th>Dates</th><th>Reason</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for l in leaves %}
+      <tr>
+        <td>{{ l.leave_type }}</td>
+        <td>{{ l.start_date }} → {{ l.end_date }}</td>
+        <td style="color:var(--text-muted)">{{ l.reason }}</td>
+        <td>
+          {% if l.status == "approved" %}<span class="pill pill-ok">Approved</span>
+          {% elif l.status == "rejected" %}<span class="pill pill-err">Rejected</span>
+          {% else %}<span class="pill pill-warn">Pending</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">My payroll</h2>
+    <span class="pill pill-info">{{ payrolls.len() }}</span>
+  </div>
+  {% if payrolls.is_empty() %}
+  <div class="empty-state"><h3>No payroll runs</h3><p>None recorded yet.</p></div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Period</th><th style="text-align:right">Base</th><th style="text-align:right">Allowance</th><th style="text-align:right">Deduction</th><th style="text-align:right">Net</th><th>Paid on</th></tr></thead>
+    <tbody>
+      {% for p in payrolls %}
+      <tr>
+        <td>{{ p.period_label }}</td>
+        <td style="text-align:right">{{ p.base }}</td>
+        <td style="text-align:right">{{ p.allowance }}</td>
+        <td style="text-align:right">{{ p.deduction }}</td>
+        <td style="text-align:right">{{ p.net }}</td>
+        <td style="color:var(--text-muted)">{{ p.paid_on }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Activities — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Record · Activities</p>
+    <h1 class="page-title mt-2">Activities</h1>
+    <p class="page-sub">Clubs, sports, events, and service groups.</p>
+  </div>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+{% if can_mutate %}
+<div class="card mt-4">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">New activity</h2>
+  <form method="post" action="/activities" class="mt-4 grid gap-4 sm:grid-cols-2">
+    <div>
+      <label class="label" for="name">Name</label>
+      <input class="input" id="name" name="name" type="text" required>
+    </div>
+    <div>
+      <label class="label" for="kind">Kind</label>
+      <select class="input" id="kind" name="kind">
+        <option value="club">Club</option>
+        <option value="sport">Sport</option>
+        <option value="event">Event</option>
+        <option value="service">Service</option>
+      </select>
+    </div>
+    <div class="sm:col-span-2">
+      <label class="label" for="description">Description</label>
+      <textarea class="input" id="description" name="description" rows="2"></textarea>
+    </div>
+    <div>
+      <label class="label" for="supervisor_id">Supervisor ID (optional)</label>
+      <input class="input" id="supervisor_id" name="supervisor_id" type="text">
+    </div>
+    <div class="sm:col-span-2">
+      <button class="btn-primary" type="submit">Create activity</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Activities</h2>
+    <span class="pill pill-info">{{ activities.len() }}</span>
+  </div>
+  {% if activities.is_empty() %}
+  <div class="empty-state">
+    <h3>No activities yet</h3>
+    <p>Create an activity to get started.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Name</th><th>Kind</th><th></th></tr></thead>
+    <tbody>
+      {% for a in activities %}
+      <tr>
+        <td>{{ a.name }}</td>
+        <td>{{ a.kind }}</td>
+        <td style="text-align:right"><a class="btn-ghost" href="/activities/{{ a.id }}">Open</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

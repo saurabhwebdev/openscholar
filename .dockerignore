@@ -1,0 +1,10 @@
+target/
+.opencode/
+dev.sh
+tests/
+*.log
+.git/
+.gitignore
+Dockerfile
+docker-compose.yml
+.env

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Lessons — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Record · Lessons</p>
+    <h1 class="page-title mt-2">Lessons</h1>
+    <p class="page-sub">Lesson plans, homework, and materials by class.</p>
+  </div>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<form method="get" action="/lessons" class="mt-6 flex flex-wrap items-end gap-4">
+  <div style="min-width:220px">
+    <label class="label" for="class_id">Class</label>
+    <select class="input" id="class_id" name="class_id">
+      {% for c in classes %}
+      <option value="{{ c.id }}" {% if c.selected %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn-secondary" type="submit">Filter</button>
+</form>
+
+{% if can_mutate %}
+<div class="card mt-4">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">New lesson</h2>
+  <form method="post" action="/lessons" class="mt-4 grid gap-4 sm:grid-cols-2">
+    <input type="hidden" name="class_id" value="{% if let Some(cid) = selected_class %}{{ cid }}{% endif %}">
+    <div>
+      <label class="label" for="title">Title</label>
+      <input class="input" id="title" name="title" type="text" required>
+    </div>
+    <div>
+      <label class="label" for="date">Date</label>
+      <input class="input" id="date" name="date" type="date" value="{{ today_date }}" required>
+    </div>
+    <div>
+      <label class="label" for="subject_id">Subject ID (optional)</label>
+      <input class="input" id="subject_id" name="subject_id" type="text">
+    </div>
+    <div>
+      <label class="label" for="teacher_id">Teacher ID (optional)</label>
+      <input class="input" id="teacher_id" name="teacher_id" type="text">
+    </div>
+    <div class="sm:col-span-2">
+      <label class="label" for="body">Body</label>
+      <textarea class="input" id="body" name="body" rows="3"></textarea>
+    </div>
+    <div class="sm:col-span-2">
+      <label class="label" for="homework">Homework</label>
+      <textarea class="input" id="homework" name="homework" rows="2"></textarea>
+    </div>
+    <div class="sm:col-span-2">
+      <button class="btn-primary" type="submit">Create lesson</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Lessons</h2>
+    <span class="pill pill-info">{{ lessons.len() }}</span>
+  </div>
+  {% if lessons.is_empty() %}
+  <div class="empty-state">
+    <h3>No lessons yet</h3>
+    <p>Create a lesson to get started.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Title</th><th>Date</th><th></th></tr></thead>
+    <tbody>
+      {% for l in lessons %}
+      <tr>
+        <td>{{ l.title }}</td>
+        <td>{{ l.date }}</td>
+        <td style="text-align:right"><a class="btn-ghost" href="/lessons/{{ l.id }}">Open</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

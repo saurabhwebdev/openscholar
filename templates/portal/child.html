@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}{{ child.full_name }} — Family portal{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Family · {{ child.admission_no }}</p>
+    <h1 class="page-title mt-2">{{ child.full_name }}</h1>
+    <p class="page-sub">Enrolled {{ child.enrolled_on }}</p>
+  </div>
+  <div class="flex items-center gap-3">
+    {% if child.status.as_str() == "active" %}<span class="pill pill-ok">Active</span>
+    {% else if child.status.as_str() == "inactive" %}<span class="pill pill-warn">Inactive</span>
+    {% else %}<span class="pill pill-info">{{ child.status }}</span>{% endif %}
+    <a class="btn-ghost" href="/portal">All children</a>
+    <a class="btn-secondary" href="/print/students/{{ child.id }}/report-card">Report card</a>
+  </div>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="stat-grid mt-6">
+  <div class="card">
+    <div class="stat-value">{{ child.attendance_present }}/{{ child.attendance_total }}</div>
+    <div class="stat-label">Present · last 14 days</div>
+  </div>
+  <div class="card">
+    <div class="stat-value">{{ child.balance }}</div>
+    <div class="stat-label">Fee balance</div>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Recent attendance</h2>
+    <span class="pill pill-info">Last 14 days</span>
+  </div>
+  {% if child.recent_attendance.is_empty() %}
+  <div class="empty-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4m8-4v4"/></svg>
+    <h3>No recent attendance</h3>
+    <p>No attendance recorded in the last 14 days.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Date</th><th>Class</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for a in child.recent_attendance %}
+      <tr><td>{{ a.date }}</td><td>{{ a.class_name }}</td><td>{{ a.status }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Latest assessments</h2>
+    <span class="pill pill-info">{{ child.assessments.len() }} shown</span>
+  </div>
+  {% if child.assessments.is_empty() %}
+  <div class="empty-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M3 20h18M6 20v-7m6 7V4m6 16v-4"/></svg>
+    <h3>No grades yet</h3>
+    <p>Scores will appear here once assessments are graded.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Assessment</th><th>Class</th><th style="text-align:right">Score</th><th>Date</th></tr></thead>
+    <tbody>
+      {% for s in child.assessments %}
+      <tr><td>{{ s.name }}</td><td>{{ s.class_name }}</td><td style="text-align:right">{{ s.score }} / {{ s.max_score }}</td><td>{{ s.date }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Open invoices</h2>
+    <span class="pill pill-info">{{ child.invoices.len() }} open</span>
+  </div>
+  {% if child.invoices.is_empty() %}
+  <div class="empty-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/></svg>
+    <h3>All clear</h3>
+    <p>No open invoices for this student. Please contact the school office with billing questions.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Title</th><th style="text-align:right">Amount</th><th style="text-align:right">Paid</th><th style="text-align:right">Balance</th><th>Due</th></tr></thead>
+    <tbody>
+      {% for inv in child.invoices %}
+      <tr><td>{{ inv.title }}</td><td style="text-align:right">{{ inv.amount }}</td><td style="text-align:right">{{ inv.paid }}</td><td style="text-align:right">{{ inv.balance }}</td><td>{{ inv.due }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Welfare</h2>
+    <span class="pill pill-info">{{ child.medical_count }} medical</span>
+  </div>
+  {% if child.recent_incidents.is_empty() %}
+  <div class="empty-state">
+    <h3>No incidents recorded</h3>
+    <p>Behavior incidents will appear here when recorded by the school.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Date</th><th>Kind</th><th>Description</th></tr></thead>
+    <tbody>
+      {% for inc in child.recent_incidents %}
+      <tr>
+        <td>{{ inc.date }}</td>
+        <td>
+          {% if inc.kind == "positive" %}<span class="pill pill-ok">Positive</span>
+          {% elif inc.kind == "major" %}<span class="pill pill-err">Major</span>
+          {% else %}<span class="pill pill-warn">Minor</span>{% endif %}
+        </td>
+        <td>{{ inc.description }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Transport</h2>
+    <span class="pill pill-info">{{ child.transport_routes.len() }} routes</span>
+  </div>
+  {% if child.transport_routes.is_empty() %}
+  <div class="empty-state">
+    <h3>No transport assigned</h3>
+    <p>Contact the school office for transport arrangements.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Route</th><th>Vehicle</th><th>Stop</th><th style="text-align:right">Fee</th></tr></thead>
+    <tbody>
+      {% for r in child.transport_routes %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td>{% if let Some(v) = r.vehicle_reg %}{{ v }}{% else %}—{% endif %}</td>
+        <td>{% if let Some(s) = r.stop_name %}{{ s }}{% else %}—{% endif %}</td>
+        <td style="text-align:right">{{ r.fee_cents }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Hostel</h2>
+    <span class="pill pill-info">{% if child.hostel_allocation.is_some() %}Allocated{% else %}None{% endif %}</span>
+  </div>
+  {% if let Some(a) = child.hostel_allocation %}
+  <dl class="mt-4 space-y-4 text-sm">
+    <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Room</dt><dd class="font-medium">{% if let Some(n) = a.room_name %}{{ n }}{% else %}#{{ a.room_id }}{% endif %}</dd></div>
+    <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Bed</dt><dd class="font-medium">{% if let Some(b) = a.bed_label %}{{ b }}{% else %}—{% endif %}</dd></div>
+    <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Allocated</dt><dd class="font-medium">{{ a.allocated_on }}</dd></div>
+  </dl>
+  {% else %}
+  <div class="empty-state">
+    <h3>No room allocated</h3>
+    <p>Contact the school office for hostel arrangements.</p>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Recent lessons</h2>
+    <span class="pill pill-info">{{ child.lessons.len() }}</span>
+  </div>
+  {% if child.lessons.is_empty() %}
+  <div class="empty-state">
+    <h3>No lessons yet</h3>
+    <p>Lessons for enrolled classes will appear here.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Date</th><th>Lesson</th><th style="text-align:right">Homework</th></tr></thead>
+    <tbody>
+      {% for l in child.lessons %}
+      <tr>
+        <td>{{ l.date }}</td>
+        <td>{{ l.title }}</td>
+        <td style="text-align:right">{% if l.homework.is_some() %}<span class="pill pill-warn">Assigned</span>{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Activities</h2>
+    <span class="pill pill-info">{{ child.activities.len() }}</span>
+  </div>
+  {% if child.activities.is_empty() %}
+  <div class="empty-state">
+    <h3>No activities joined</h3>
+    <p>Clubs and sports will appear here once joined.</p>
+  </div>
+  {% else %}
+  <ul class="mt-4 space-y-3 text-sm">
+    {% for a in child.activities %}
+    <li class="flex items-center justify-between gap-4">
+      <span class="font-medium">{{ a.name }}</span>
+      <span class="pill pill-info">{{ a.kind }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Enrollments</h2>
+    <span class="pill pill-info">{{ child.enrollments.len() }}</span>
+  </div>
+  {% if child.enrollments.is_empty() %}
+  <div class="empty-state">
+    <h3>Not enrolled yet</h3>
+    <p>Class enrollments will appear here automatically.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Class</th><th style="text-align:right">Enrolled</th></tr></thead>
+    <tbody>
+      {% for e in child.enrollments %}
+      <tr><td>{{ e.class_name }}</td><td style="text-align:right">{{ e.enrolled_on }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

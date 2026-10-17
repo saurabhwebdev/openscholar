@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Family portal — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Family</p>
+    <h1 class="page-title mt-2">Family portal</h1>
+    <p class="page-sub">Attendance, grades, and fees for your children.</p>
+  </div>
+  <span class="pill pill-info">{{ children.len() }} linked</span>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+{% if children.is_empty() %}
+<div class="card mt-6">
+  <div class="empty-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3Z"/></svg>
+    <h3>No linked children</h3>
+    <p>No students are linked to your account yet. Please contact the school office to link your children to this login.</p>
+  </div>
+</div>
+{% else %}
+<div class="grid gap-4 mt-6">
+  {% for child in children %}
+  <div class="card">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="eyebrow">{{ child.admission_no }} · enrolled {{ child.enrolled_on }}</p>
+        <h2 class="text-lg font-semibold mt-2" style="letter-spacing:-0.01em">{{ child.full_name }}</h2>
+      </div>
+      <div class="flex items-center gap-3">
+        {% if child.status.as_str() == "active" %}<span class="pill pill-ok">Active</span>
+        {% else if child.status.as_str() == "inactive" %}<span class="pill pill-warn">Inactive</span>
+        {% else %}<span class="pill pill-info">{{ child.status }}</span>{% endif %}
+        <a class="btn-ghost" href="/portal/{{ child.id }}">Open</a>
+      </div>
+    </div>
+
+    <div class="stat-grid mt-4">
+      <div class="card">
+        <div class="stat-value">{{ child.attendance_present }}/{{ child.attendance_total }}</div>
+        <div class="stat-label">Present · last 14 days</div>
+      </div>
+      <div class="card">
+        <div class="stat-value">{{ child.balance }}</div>
+        <div class="stat-label">Fee balance</div>
+      </div>
+    </div>
+
+    <div class="grid gap-4 mt-4 lg:grid-cols-2">
+      <div class="card">
+        <div class="flex items-center justify-between gap-4">
+          <h3 class="text-sm font-semibold">Recent attendance</h3>
+          <span class="pill pill-info">{{ child.recent_attendance.len() }}</span>
+        </div>
+        {% if child.recent_attendance.is_empty() %}
+        <div class="empty-state">
+          <h3>No recent attendance</h3>
+          <p>No attendance recorded in the last 14 days.</p>
+        </div>
+        {% else %}
+        <table class="table mt-4">
+          <thead><tr><th>Date</th><th>Class</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for a in child.recent_attendance %}
+            <tr><td>{{ a.date }}</td><td>{{ a.class_name }}</td><td>{{ a.status }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+      </div>
+      <div class="card">
+        <div class="flex items-center justify-between gap-4">
+          <h3 class="text-sm font-semibold">Latest assessments</h3>
+          <span class="pill pill-info">{{ child.assessments.len() }}</span>
+        </div>
+        {% if child.assessments.is_empty() %}
+        <div class="empty-state">
+          <h3>No grades yet</h3>
+          <p>Scores will appear here once assessments are graded.</p>
+        </div>
+        {% else %}
+        <table class="table mt-4">
+          <thead><tr><th>Assessment</th><th>Class</th><th style="text-align:right">Score</th></tr></thead>
+          <tbody>
+            {% for s in child.assessments %}
+            <tr><td>{{ s.name }}<br><span style="color:var(--text-muted)">{{ s.date }}</span></td><td>{{ s.class_name }}</td><td style="text-align:right">{{ s.score }} / {{ s.max_score }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="grid gap-4 mt-4 lg:grid-cols-2">
+      <div class="card">
+        <div class="flex items-center justify-between gap-4">
+          <h3 class="text-sm font-semibold">Open invoices</h3>
+          <span class="pill pill-info">{{ child.invoices.len() }}</span>
+        </div>
+        {% if child.invoices.is_empty() %}
+        <div class="empty-state">
+          <h3>All clear</h3>
+          <p>No open invoices for this student.</p>
+        </div>
+        {% else %}
+        <table class="table mt-4">
+          <thead><tr><th>Title</th><th style="text-align:right">Balance</th><th>Due</th></tr></thead>
+          <tbody>
+            {% for inv in child.invoices %}
+            <tr><td>{{ inv.title }}</td><td style="text-align:right">{{ inv.balance }}</td><td>{{ inv.due }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+      </div>
+      <div class="card">
+        <div class="flex items-center justify-between gap-4">
+          <h3 class="text-sm font-semibold">Enrollments</h3>
+          <span class="pill pill-info">{{ child.enrollments.len() }}</span>
+        </div>
+        {% if child.enrollments.is_empty() %}
+        <div class="empty-state">
+          <h3>Not enrolled yet</h3>
+          <p>Class enrollments will appear here automatically.</p>
+        </div>
+        {% else %}
+        <table class="table mt-4">
+          <thead><tr><th>Class</th><th style="text-align:right">Enrolled</th></tr></thead>
+          <tbody>
+            {% for e in child.enrollments %}
+            <tr><td>{{ e.class_name }}</td><td style="text-align:right">{{ e.enrolled_on }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

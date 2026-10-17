@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Staff — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Manage</p>
+    <h1 class="page-title mt-2">Staff</h1>
+    <p class="page-sub">Everyone who keeps the school running.</p>
+  </div>
+  <a class="btn-primary" href="/staff/new">New staff</a>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% else %}flash-info{% endif %} mt-6" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<form method="get" action="/staff" class="mt-6 flex gap-2">
+  <input class="input" type="search" name="q" value="{{ q }}" placeholder="Search name, employee no, title, department" aria-label="Search staff">
+  <button class="btn-secondary" type="submit">Search</button>
+</form>
+
+<div class="card mt-4" style="padding:0;overflow:hidden">
+  {% if staff.is_empty() %}
+  <div class="empty-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+    <h3>No staff found</h3>
+    <p>{% if q.is_empty() %}Add your first staff member to build the school directory.{% else %}Nothing matches that search. Try a different name, number, title, or department.{% endif %}</p>
+    <a class="btn-primary" href="/staff/new">New staff</a>
+  </div>
+  {% else %}
+  <table class="table">
+    <thead><tr><th>Employee no</th><th>Name</th><th>Job title</th><th>Department</th><th>Hired</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for s in staff %}
+      <tr>
+        <td>{{ s.employee_no }}</td>
+        <td><a class="rowlink" href="/staff/{{ s.id }}">{{ s.full_name }}</a></td>
+        <td>{{ s.job_title_display }}</td>
+        <td>{{ s.department_display }}</td>
+        <td>{{ s.hired_on_display }}</td>
+        <td>{% if s.is_active %}<span class="pill pill-ok">Active</span>{% else %}<span class="pill pill-err">Inactive</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

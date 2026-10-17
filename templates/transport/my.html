@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}My transport — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Family · Transport</p>
+    <h1 class="page-title mt-2">Transport</h1>
+    <p class="page-sub">Your assigned routes.</p>
+  </div>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Riders</h2>
+    <span class="pill pill-info">{{ riders.len() }}</span>
+  </div>
+  {% if riders.is_empty() %}
+  <div class="empty-state">
+    <h3>No transport assigned</h3>
+    <p>No routes assigned yet.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Student</th><th>Route</th><th>Stop</th></tr></thead>
+    <tbody>
+      {% for r in riders %}
+      <tr>
+        <td>{{ r.student_name }}</td>
+        <td>{% for rt in routes %}{% if rt.id == r.route_id %}{{ rt.name }}{% endif %}{% endfor %}</td>
+        <td>{% if let Some(n) = r.stop_name %}{{ n }}{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

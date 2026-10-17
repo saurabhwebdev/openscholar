@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Admissions — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Manage · Students</p>
+    <h1 class="page-title mt-2">Admissions</h1>
+    <p class="page-sub">Applicant pipeline: review, accept, then enroll.</p>
+  </div>
+  <a class="btn-primary" href="/admissions/new">New application</a>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% else %}flash-info{% endif %} mt-6" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="grid gap-4 mt-6 lg:grid-cols-3">
+  <div class="card">
+    <div class="flex items-center justify-between gap-4">
+      <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">New</h2>
+      <span class="pill pill-info">{{ new_count }}</span>
+    </div>
+    {% if new_applicants.is_empty() %}
+    <div class="empty-state">
+      <h3>No new applications</h3>
+      <p>New applications will appear here.</p>
+    </div>
+    {% else %}
+    <table class="table mt-4">
+      <tbody>
+        {% for a in new_applicants %}
+        <tr>
+          <td><a class="rowlink" href="/applicants/{{ a.id }}">{{ a.full_name }}</a></td>
+          <td style="text-align:right"><a class="btn-secondary" href="/applicants/{{ a.id }}">Open</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+  <div class="card">
+    <div class="flex items-center justify-between gap-4">
+      <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Reviewing</h2>
+      <span class="pill pill-warn">{{ reviewing_count }}</span>
+    </div>
+    {% if reviewing.is_empty() %}
+    <div class="empty-state">
+      <h3>Nothing under review</h3>
+      <p>Move promising applications to reviewing.</p>
+    </div>
+    {% else %}
+    <table class="table mt-4">
+      <tbody>
+        {% for a in reviewing %}
+        <tr>
+          <td><a class="rowlink" href="/applicants/{{ a.id }}">{{ a.full_name }}</a></td>
+          <td style="text-align:right"><a class="btn-secondary" href="/applicants/{{ a.id }}">Open</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+  <div class="card">
+    <div class="flex items-center justify-between gap-4">
+      <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Accepted</h2>
+      <span class="pill pill-ok">{{ accepted_count }}</span>
+    </div>
+    {% if accepted.is_empty() %}
+    <div class="empty-state">
+      <h3>No accepted applicants</h3>
+      <p>Accepted applicants wait here for enrollment.</p>
+    </div>
+    {% else %}
+    <table class="table mt-4">
+      <tbody>
+        {% for a in accepted %}
+        <tr>
+          <td><a class="rowlink" href="/applicants/{{ a.id }}">{{ a.full_name }}</a></td>
+          <td style="text-align:right"><a class="btn-secondary" href="/applicants/{{ a.id }}">Open</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid gap-4 mt-4 lg:grid-cols-2">
+  <div class="card">
+    <div class="flex items-center justify-between gap-4">
+      <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Rejected</h2>
+      <span class="pill pill-err">{{ rejected_count }}</span>
+    </div>
+    {% if rejected.is_empty() %}
+    <div class="empty-state">
+      <h3>No rejections</h3>
+      <p>Rejected applications will be listed here.</p>
+    </div>
+    {% else %}
+    <table class="table mt-4">
+      <tbody>
+        {% for a in rejected %}
+        <tr>
+          <td><a class="rowlink" href="/applicants/{{ a.id }}">{{ a.full_name }}</a></td>
+          <td style="text-align:right"><a class="btn-secondary" href="/applicants/{{ a.id }}">Open</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+  <div class="card">
+    <div class="flex items-center justify-between gap-4">
+      <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Enrolled</h2>
+      <span class="pill pill-ok">{{ enrolled_count }}</span>
+    </div>
+    {% if enrolled.is_empty() %}
+    <div class="empty-state">
+      <h3>No enrollments yet</h3>
+      <p>Enrolled applicants become students.</p>
+    </div>
+    {% else %}
+    <table class="table mt-4">
+      <tbody>
+        {% for a in enrolled %}
+        <tr>
+          <td><a class="rowlink" href="/applicants/{{ a.id }}">{{ a.full_name }}</a></td>
+          <td style="text-align:right"><a class="btn-secondary" href="/applicants/{{ a.id }}">Open</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

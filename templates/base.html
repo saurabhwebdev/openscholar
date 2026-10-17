@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}OpenScholar{% endblock %}</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%235e6ad2'/%3E%3Cpath d='M32 16 10 27l22 11 22-11-22-11Z' fill='white'/%3E%3Cpath d='M20 33v9c0 3 5.4 6 12 6s12-3 12-6v-9' stroke='white' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/tailwind.css?v=3">
+<link rel="stylesheet" href="/static/css/app.css?v=3">
+<link rel="stylesheet" href="/static/css/print.css?v=3">
+<script src="/static/js/htmx.min.js?v=3" defer></script>
+</head>
+{# Child-template convention: extend this file, fill `title` + `content` blocks,
+   and provide `section` (dashboard | students | staff | classes | attendance |
+   grades | fees | users | notifications), `section_label` (e.g. "Students"),
+   `user_name`, and `user_initial` (one capital letter). #}
+<body class="antialiased">
+<div class="min-h-screen lg:flex">
+  <aside class="lg:w-60 lg:shrink-0 lg:min-h-screen flex lg:flex-col flex-row items-center lg:items-stretch gap-2 lg:gap-0 p-3 lg:p-4 overflow-x-auto" style="background:#141422;color:#cfcfe6">
+    <div class="flex items-center gap-3 px-2 py-2 lg:py-4 shrink-0">
+      <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg" style="background:var(--accent)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 2 9l10 5 10-5-10-5Z"/><path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5"/><path d="M22 9v5"/></svg>
+      </span>
+      <div class="hidden sm:block">
+        <div class="text-sm font-semibold tracking-tight leading-none text-white">OpenScholar</div>
+        <div class="text-xs mt-1" style="color:#8f8fb3">School workspace</div>
+      </div>
+    </div>
+    <nav class="flex lg:flex-col flex-row items-center lg:items-stretch gap-1 lg:mt-2" aria-label="Primary">
+      <a class="navlink {% if section == "dashboard" %}navlink-active{% endif %}" href="/dashboard" {% if section == "dashboard" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span class="hidden md:inline">Dashboard</span>
+      </a>
+      <a data-family class="navlink {% if section == "portal" %}navlink-active{% endif %}" href="/portal" {% if section == "portal" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-4.5-9-9c-1.5-3.5 1-7 4.5-7 2 0 3.5 1.5 4.5 3 1-1.5 2.5-3 4.5-3 3.5 0 6 3.5 4.5 7-2 4.5-9 9-9 9Z"/></svg>
+        <span class="hidden md:inline">Family portal</span>
+      </a>
+      <div class="nav-section-label hidden lg:block" aria-hidden="true">Manage</div>
+      <a data-staff class="navlink {% if section == "students" %}navlink-active{% endif %}" href="/students" {% if section == "students" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 2 9l10 5 10-5-10-5Z"/><path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5"/></svg>
+        <span class="hidden md:inline">Students</span>
+      </a>
+      <a data-staff class="navlink {% if section == "staff" %}navlink-active{% endif %}" href="/staff" {% if section == "staff" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+        <span class="hidden md:inline">Staff</span>
+      </a>
+      <a data-staff class="navlink {% if section == "hr" %}navlink-active{% endif %}" href="/hr" {% if section == "hr" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 12h18M12 6v14M8 6V4h8v2"/></svg>
+        <span class="hidden md:inline">HR</span>
+      </a>
+      <a data-staff class="navlink {% if section == "classes" %}navlink-active{% endif %}" href="/classes" {% if section == "classes" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4M8 7.5h2m4 0h2M8 11.5h2m4 0h2"/></svg>
+        <span class="hidden md:inline">Classes</span>
+      </a>
+      <a data-staff class="navlink {% if section == "admissions" %}navlink-active{% endif %}" href="/admissions" {% if section == "admissions" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 13h6"/></svg>
+        <span class="hidden md:inline">Admissions</span>
+      </a>
+      <a data-staff class="navlink {% if section == "subjects" %}navlink-active{% endif %}" href="/subjects" {% if section == "subjects" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></svg>
+        <span class="hidden md:inline">Subjects</span>
+      </a>
+      <a data-staff class="navlink {% if section == "library" %}navlink-active{% endif %}" href="/library" {% if section == "library" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5l4-1 3 15-4 1z"/></svg>
+        <span class="hidden md:inline">Library</span>
+      </a>
+      <a data-staff class="navlink {% if section == "timetable" %}navlink-active{% endif %}" href="/timetable" {% if section == "timetable" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4m8-4v4"/></svg>
+        <span class="hidden md:inline">Timetable</span>
+      </a>
+      <div class="nav-section-label hidden lg:block" aria-hidden="true">Record</div>
+      <a data-staff class="navlink {% if section == "attendance" %}navlink-active{% endif %}" href="/attendance" {% if section == "attendance" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4m8-4v4M9.5 15l2 2 3.5-4"/></svg>
+        <span class="hidden md:inline">Attendance</span>
+      </a>
+      <a data-staff class="navlink {% if section == "grades" %}navlink-active{% endif %}" href="/grades" {% if section == "grades" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 20h18M6 20v-7m6 7V4m6 16v-4"/></svg>
+        <span class="hidden md:inline">Grades</span>
+      </a>
+      <a data-staff class="navlink {% if section == "fees" %}navlink-active{% endif %}" href="/fees" {% if section == "fees" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/><path d="M6.5 9.5h.01M17.5 15.5h.01"/></svg>
+        <span class="hidden md:inline">Fees</span>
+      </a>
+      <a data-staff class="navlink {% if section == "transport" %}navlink-active{% endif %}" href="/transport" {% if section == "transport" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="14" height="11" rx="2"/><path d="M17 9h2l2 3v4h-4"/><circle cx="7.5" cy="18.5" r="1.8"/><circle cx="16.5" cy="18.5" r="1.8"/></svg>
+        <span class="hidden md:inline">Transport</span>
+      </a>
+      <a data-staff class="navlink {% if section == "hostel" %}navlink-active{% endif %}" href="/hostel" {% if section == "hostel" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21V5h18v16M3 9h18M3 15h18M9 5v16"/></svg>
+        <span class="hidden md:inline">Hostel</span>
+      </a>
+      <a data-staff class="navlink {% if section == "lessons" %}navlink-active{% endif %}" href="/lessons" {% if section == "lessons" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2V5Z"/><path d="M8 7h8M8 11h5"/></svg>
+        <span class="hidden md:inline">Lessons</span>
+      </a>
+      <a data-staff class="navlink {% if section == "activities" %}navlink-active{% endif %}" href="/activities" {% if section == "activities" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3c3 3.5 3 14.5 0 18M3.5 9h17M3.5 15h17"/></svg>
+        <span class="hidden md:inline">Activities</span>
+      </a>
+      <a data-staff class="navlink {% if section == "analytics" %}navlink-active{% endif %}" href="/analytics" {% if section == "analytics" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg>
+        <span class="hidden md:inline">Analytics</span>
+      </a>
+      <div class="nav-section-label hidden lg:block" aria-hidden="true">System</div>
+      <a data-staff class="navlink {% if section == "users" %}navlink-active{% endif %}" href="/users" {% if section == "users" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3Z"/></svg>
+        <span class="hidden md:inline">Users</span>
+      </a>
+      <a data-staff class="navlink {% if section == "settings" %}navlink-active{% endif %}" href="/settings" {% if section == "settings" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg>
+        <span class="hidden md:inline">Settings</span>
+      </a>
+      <a data-staff class="navlink {% if section == "audit" %}navlink-active{% endif %}" href="/audit" {% if section == "audit" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6l1 3h3v15H5V6h3l1-3Z"/><path d="M9 12l2 2 4-4"/></svg>
+        <span class="hidden md:inline">Audit log</span>
+      </a>
+      <a data-staff class="navlink {% if section == "attachments" %}navlink-active{% endif %}" href="/attachments" {% if section == "attachments" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.5 12.5 21a5 5 0 0 1-7-7l9-9a3.5 3.5 0 0 1 5 5l-9 9a2 2 0 0 1-3-3l8-8"/></svg>
+        <span class="hidden md:inline">Attachments</span>
+      </a>
+      <a class="navlink {% if section == "notifications" %}navlink-active{% endif %}" href="/notifications" {% if section == "notifications" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+        <span class="hidden md:inline">Notifications</span> <span hx-get="/notifications/badge" hx-trigger="load"></span>
+      </a>
+      <a class="navlink {% if section == "bulletin" %}navlink-active{% endif %}" href="/notices" {% if section == "bulletin" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H8l-4 4V5Z"/><path d="M8 9h8M8 12.5h5"/></svg>
+        <span class="hidden md:inline">Bulletin</span>
+      </a>
+      <a data-staff class="navlink {% if section == "outbox" %}navlink-active{% endif %}" href="/outbox" {% if section == "outbox" %}aria-current="page"{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+        <span class="hidden md:inline">Outbox</span>
+      </a>
+    </nav>
+    <form method="post" action="/logout" class="lg:mt-auto lg:px-0 lg:pt-6 ml-auto lg:ml-0 shrink-0">
+      <div class="hidden lg:block" aria-hidden="true" style="border-top:1px solid rgba(255,255,255,.1);margin:0 8px 8px"></div>
+      <button type="submit" class="navlink navlink-danger w-full" title="Sign out">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+        <span class="hidden md:inline">Sign out</span>
+      </button>
+    </form>
+  </aside>
+  <div class="flex-1 w-full min-w-0 flex flex-col min-h-screen">
+    <header class="topbar">
+      <div class="text-sm font-semibold tracking-tight">{{ section_label }}</div>
+      <div class="text-sm hidden sm:block" style="color:var(--text-muted)">{{ today }}</div>
+      <div class="ml-auto flex items-center gap-3">
+        <span class="avatar" aria-hidden="true">{{ user_initial }}</span>
+        <span class="text-sm font-medium hidden sm:block">{{ user_name }}</span>
+      </div>
+    </header>
+    <main class="flex-1 w-full">
+      <div class="max-w-6xl mx-auto w-full" style="padding:clamp(1.5rem,5vw,2.5rem) clamp(1rem,5vw,2rem)">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+</div>
+<script>
+(function () {
+  // Role-aware nav: parents/students see family links, staff see staff links.
+  // No-JS fallback keeps every link (server still enforces roles with 403s).
+  fetch("/nav/role").then(function (r) { return r.text(); }).then(function (role) {
+    var sel = (role === "parent" || role === "student") ? "[data-staff]" : "[data-family]";
+    document.querySelectorAll(sel).forEach(function (e) { e.remove(); });
+  }).catch(function () {});
+})();
+</script>
+</body>
+</html>

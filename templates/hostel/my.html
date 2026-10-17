@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Hostel — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Hostel · My allocations</p>
+    <h1 class="page-title mt-2">Hostel</h1>
+    <p class="page-sub">Your room allocations.</p>
+  </div>
+  <a class="btn-secondary" href="/hostel">All hostel</a>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Allocations</h2>
+    <span class="pill pill-info">{{ allocations.len() }}</span>
+  </div>
+  {% if allocations.is_empty() %}
+  <div class="empty-state">
+    <h3>No allocations</h3>
+    <p>No hostel allocations recorded.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Student</th><th>Room</th><th>Bed</th><th>Allocated</th><th>Released</th></tr></thead>
+    <tbody>
+      {% for a in allocations %}
+      <tr>
+        <td>{% if let Some(n) = a.student_name %}{{ n }}{% else %}#{{ a.student_id }}{% endif %}</td>
+        <td>{% if let Some(n) = a.room_name %}{{ n }}{% else %}#{{ a.room_id }}{% endif %}</td>
+        <td>{% if let Some(b) = a.bed_label %}{{ b }}{% else %}—{% endif %}</td>
+        <td>{{ a.allocated_on }}</td>
+        <td>{% if let Some(d) = a.released_on %}{{ d }}{% else %}<span class="pill pill-ok">Open</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

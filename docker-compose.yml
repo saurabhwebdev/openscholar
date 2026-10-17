@@ -1,0 +1,20 @@
+# OpenScholar compose — APP ONLY (no Postgres service).
+# The app uses the existing host Postgres (school DB at 127.0.0.1:5432),
+# reached from inside the container via host-gateway.
+services:
+  app:
+    build: .
+    image: openscholar:dev
+    container_name: openscholar-app
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://admin1:dev-local-only@host.docker.internal:5432/school}
+      BIND_ADDR: ${BIND_ADDR:-0.0.0.0:8081}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme-admin-123}
+      ADMIN_NAME: ${ADMIN_NAME:-Administrator}
+      RUST_LOG: ${RUST_LOG:-opencodetest=info,tower_http=info,sqlx=warn}
+    ports:
+      - "8081:8081"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

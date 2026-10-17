@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wider" style="color:var(--text-muted)">System</p>
+      <h1 class="text-2xl font-semibold tracking-tight">Audit log</h1>
+    </div>
+    <a class="btn-secondary" href="/audit/export/students">Export students CSV</a>
+  </div>
+
+  {% if let Some(msg) = flash %}
+  <div class="flash-{{ flash_kind }}" role="alert">{{ msg }}</div>
+  {% endif %}
+
+  <div class="card">
+    <h2 class="text-lg font-semibold mb-3">Import students (CSV)</h2>
+    <form method="post" action="/audit/import/students" class="space-y-3">
+      <label class="block text-sm font-medium" for="csv">CSV text</label>
+      <textarea id="csv" name="csv" class="input" rows="6" placeholder="admission_no,first_name,last_name,status,enrolled_on"></textarea>
+      <button type="submit" class="btn-primary">Import</button>
+    </form>
+  </div>
+
+  {% if rows.is_empty() %}
+  <div class="empty-state">
+    <p class="text-lg font-semibold">No audit entries yet</p>
+    <p class="text-sm" style="color:var(--text-muted)">Actions will appear here as they happen.</p>
+  </div>
+  {% else %}
+  <div class="card overflow-x-auto">
+    <table class="table w-full">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>User</th>
+          <th>Action</th>
+          <th>Entity</th>
+          <th>Entity ID</th>
+          <th>Detail</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td>{{ r.created_at }}</td>
+          <td>{{ r.user_id }}</td>
+          <td>{{ r.action }}</td>
+          <td>{{ r.entity }}</td>
+          <td>{{ r.entity_id }}</td>
+          <td>{{ r.detail }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

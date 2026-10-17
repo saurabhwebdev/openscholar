@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}New application — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Manage · Admissions</p>
+    <h1 class="page-title mt-2">New application</h1>
+    <p class="page-sub">Record an applicant. They start in the New column.</p>
+  </div>
+  <a class="btn-secondary" href="/admissions">Back to pipeline</a>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% else %}flash-info{% endif %} mt-6" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6">
+  <form method="post" action="/applicants" class="grid gap-4 md:grid-cols-2">
+    <div>
+      <label class="label" for="first_name">First name</label>
+      <input class="input" id="first_name" name="first_name" type="text" required value="{{ first_name }}" autocomplete="off">
+    </div>
+    <div>
+      <label class="label" for="last_name">Last name</label>
+      <input class="input" id="last_name" name="last_name" type="text" required value="{{ last_name }}" autocomplete="off">
+    </div>
+    <div>
+      <label class="label" for="applying_for">Applying for</label>
+      <input class="input" id="applying_for" name="applying_for" type="text" value="{{ applying_for }}" placeholder="Grade 6" autocomplete="off">
+    </div>
+    <div>
+      <label class="label" for="gender">Gender</label>
+      <select class="input" id="gender" name="gender">
+        <option value="" {% if gender.is_empty() %}selected{% endif %}>Not specified</option>
+        <option value="male" {% if gender.as_str() == "male" %}selected{% endif %}>Male</option>
+        <option value="female" {% if gender.as_str() == "female" %}selected{% endif %}>Female</option>
+        <option value="other" {% if gender.as_str() == "other" %}selected{% endif %}>Other</option>
+      </select>
+    </div>
+    <div>
+      <label class="label" for="date_of_birth">Date of birth</label>
+      <input class="input" id="date_of_birth" name="date_of_birth" type="date" value="{{ date_of_birth }}">
+    </div>
+    <div>
+      <label class="label" for="guardian_name">Guardian name</label>
+      <input class="input" id="guardian_name" name="guardian_name" type="text" value="{{ guardian_name }}" autocomplete="off">
+    </div>
+    <div>
+      <label class="label" for="guardian_phone">Guardian phone</label>
+      <input class="input" id="guardian_phone" name="guardian_phone" type="tel" value="{{ guardian_phone }}" autocomplete="off">
+    </div>
+    <div>
+      <label class="label" for="guardian_email">Guardian email</label>
+      <input class="input" id="guardian_email" name="guardian_email" type="email" value="{{ guardian_email }}" autocomplete="off">
+    </div>
+    <div class="md:col-span-2">
+      <label class="label" for="address">Address</label>
+      <textarea class="input" id="address" name="address" rows="3">{{ address }}</textarea>
+    </div>
+    <div class="md:col-span-2">
+      <label class="label" for="notes">Notes</label>
+      <textarea class="input" id="notes" name="notes" rows="3">{{ notes }}</textarea>
+    </div>
+    <div class="md:col-span-2 flex flex-wrap gap-4">
+      <button class="btn-primary" type="submit">Add application</button>
+      <a class="btn-secondary" href="/admissions">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

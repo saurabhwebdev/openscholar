@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Activity — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Record · Activities</p>
+    <h1 class="page-title mt-2">{{ activity.name }}</h1>
+    <p class="page-sub">{{ activity.kind }}</p>
+  </div>
+  <a class="btn-ghost" href="/activities">Back</a>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-4">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Details</h2>
+  <dl class="mt-4 space-y-4 text-sm">
+    <div class="flex justify-between gap-4"><dt style="color:var(--text-muted)">Description</dt><dd class="font-medium">{% if let Some(d) = activity.description %}{{ d }}{% else %}—{% endif %}</dd></div>
+  </dl>
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Members</h2>
+    <span class="pill pill-info">{{ members.len() }}</span>
+  </div>
+  {% if members.is_empty() %}
+  <div class="empty-state">
+    <h3>No members</h3>
+    <p>No students enrolled in this activity.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Student</th><th>Joined</th><th></th></tr></thead>
+    <tbody>
+      {% for m in members %}
+      <tr>
+        <td>{{ m.student_name }}</td>
+        <td>{{ m.joined_on }}</td>
+        <td style="text-align:right">
+          {% if can_mutate %}
+          <form method="post" action="/activity-members/{{ m.id }}/delete">
+            <button class="btn-ghost" type="submit">Remove</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% if can_mutate %}
+  <form method="post" action="/activities/{{ activity.id }}/members" class="mt-4 flex flex-wrap items-end gap-4">
+    <div style="min-width:220px">
+      <label class="label" for="student_id">Student</label>
+      <select class="input" id="student_id" name="student_id">
+        {% for s in students %}
+        <option value="{{ s.0 }}">{{ s.1 }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn-primary" type="submit">Add member</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

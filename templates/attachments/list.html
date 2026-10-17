@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Attachments — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">System · Attachments</p>
+    <h1 class="page-title mt-2">Attachments</h1>
+    <p class="page-sub">Upload and manage document attachments.</p>
+  </div>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% else %}flash-info{% endif %} mt-6" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Upload</h2>
+  <form method="post" action="/attachments" class="mt-4 grid gap-4">
+    <input type="hidden" name="entity" value="{{ entity }}">
+    <input type="hidden" name="entity_id" value="{{ entity_id }}">
+    <input type="hidden" id="filename" name="filename" value="">
+    <input type="hidden" id="content_type" name="content_type" value="">
+    <input type="hidden" id="size_bytes" name="size_bytes" value="0">
+    <input type="hidden" id="data" name="data" value="">
+    <div>
+      <label class="label" for="file">File</label>
+      <input class="input" id="file" type="file">
+    </div>
+    <div>
+      <button class="btn-primary" type="submit">Upload</button>
+    </div>
+  </form>
+  <script>
+  (function () {
+    var input = document.getElementById('file');
+    if (!input) return;
+    input.addEventListener('change', function (e) {
+      var f = e.target.files && e.target.files[0];
+      if (!f) return;
+      var r = new FileReader();
+      r.onload = function () {
+        var b64 = String(r.result).split(',')[1] || '';
+        document.getElementById('data').value = b64;
+        document.getElementById('filename').value = f.name;
+        document.getElementById('content_type').value = f.type || '';
+        document.getElementById('size_bytes').value = f.size;
+      };
+      r.readAsDataURL(f);
+    });
+  })();
+  </script>
+</div>
+
+<div class="card mt-6">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Files</h2>
+    <span class="pill pill-info">{{ attachments.len() }}</span>
+  </div>
+  {% if attachments.is_empty() %}
+  <div class="empty-state">
+    <h3>No attachments</h3>
+    <p>Upload a file to see it here.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Filename</th><th>Type</th><th style="text-align:right">Size</th><th></th></tr></thead>
+    <tbody>
+      {% for a in attachments %}
+      <tr>
+        <td><a href="{{ a.download_url }}">{{ a.filename }}</a></td>
+        <td>{{ a.content_type }}</td>
+        <td style="text-align:right">{{ a.size_bytes }}</td>
+        <td style="text-align:right">
+          <form method="post" action="/attachments/{{ a.id }}/delete">
+            <button class="btn-ghost" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

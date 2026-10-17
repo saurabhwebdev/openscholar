@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}{{ class.name }} — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Manage · Classes · {{ class.year_name }}</p>
+    <h1 class="page-title mt-2">{{ class.name }}</h1>
+    <p class="page-sub">
+      {% if let Some(t) = class.teacher_name %}{{ t }} · {% endif %}
+      {% if let Some(r) = class.room %}{{ r }} · {% endif %}
+      {{ roster.len() }} enrolled{% if let Some(cap) = class.capacity %} of {{ cap }}{% endif %}
+      {% if let Some(g) = class.grade_level %} · {{ g }}{% endif %}
+    </p>
+  </div>
+  <div class="flex gap-3">
+    <a class="btn-ghost" href="/classes?year={{ class.school_year_id }}">All classes</a>
+    {% if can_mutate %}
+    <a class="btn-secondary" href="/classes/{{ class.id }}/edit">Edit</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Roster</h2>
+    <span class="pill pill-info">{{ roster.len() }} students</span>
+  </div>
+  {% if roster.is_empty() %}
+  <div class="empty-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M12 4 2 9l10 5 10-5-10-5Z"/><path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5"/></svg>
+    <h3>No students enrolled</h3>
+    <p>Use the picker below to enroll students into this class.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Admission no</th><th>Student</th><th>Enrolled on</th>{% if can_mutate %}<th></th>{% endif %}</tr></thead>
+    <tbody>
+      {% for r in roster %}
+      <tr>
+        <td>{{ r.admission_no }}</td>
+        <td>{{ r.first_name }} {{ r.last_name }}</td>
+        <td>{{ r.enrolled_on }}</td>
+        {% if can_mutate %}
+        <td style="text-align:right">
+          <form method="post" action="/classes/{{ class.id }}/unenroll/{{ r.student_id }}" style="display:inline">
+            <button class="btn-ghost" type="submit">Remove</button>
+          </form>
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+{% if can_mutate %}
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Enroll students</h2>
+    {% if is_full %}<span class="pill pill-info">Class full</span>{% endif %}
+  </div>
+  {% if is_full %}
+  <p class="text-sm mt-1" style="color:var(--text-muted)">Capacity reached — raise capacity in Edit before enrolling more students.</p>
+  {% endif %}
+  <form method="get" action="/classes/{{ class.id }}" class="flex gap-3 mt-4">
+    <input class="input flex-1" type="search" name="q" value="{{ q }}" placeholder="Search name or admission no">
+    <button class="btn-secondary" type="submit">Search</button>
+  </form>
+  {% if candidates.is_empty() %}
+  <div class="empty-state">
+    <h3>No matches</h3>
+    <p>{% if q.is_empty() %}Every active student is already enrolled here.{% else %}No active students match “{{ q }}”. Try a different search.{% endif %}</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Admission no</th><th>Student</th><th></th></tr></thead>
+    <tbody>
+      {% for s in candidates %}
+      <tr>
+        <td>{{ s.admission_no }}</td>
+        <td>{{ s.first_name }} {{ s.last_name }}</td>
+        <td style="text-align:right">
+          <form method="post" action="/classes/{{ class.id }}/enroll" style="display:inline">
+            <input type="hidden" name="student_id" value="{{ s.id }}">
+            <button class="btn-secondary" type="submit"{% if is_full %} disabled{% endif %}>Enroll</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if can_mutate %}
+<div class="card mt-4" style="border-color:color-mix(in oklch, var(--err) 35%, transparent)">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em;color:var(--err)">Danger zone</h2>
+  <p class="text-sm mt-1" style="color:var(--text-muted)">Deleting this class permanently removes its enrollments, attendance, assessments and grades. This cannot be undone.</p>
+  <form method="post" action="/classes/{{ class.id }}/delete" class="mt-4" onsubmit="return confirm('Delete this class? Enrollments, attendance, assessments and grades will be permanently removed.');">
+    <button class="btn-ghost" type="submit" style="color:var(--err)">Delete class</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

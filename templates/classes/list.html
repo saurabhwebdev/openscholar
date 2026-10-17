@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Classes — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Manage</p>
+    <h1 class="page-title mt-2">Classes</h1>
+    <p class="page-sub">Organize classes by school year and manage enrollment.</p>
+  </div>
+  {% if can_mutate %}
+  <a class="btn-primary" href="/classes/new{% if let Some(y) = selected_year %}?year={{ y }}{% endif %}">New class</a>
+  {% endif %}
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6">
+  <form method="get" action="/classes" class="flex flex-wrap items-end gap-4">
+    <div class="flex-1" style="min-width:220px">
+      <label class="label" for="year">School year</label>
+      <select class="input" id="year" name="year" onchange="this.form.submit()">
+        {% for y in years %}
+        <option value="{{ y.id }}"{% if y.selected %} selected{% endif %}>{{ y.name }}{% if y.is_current %} · Current{% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn-secondary" type="submit">Switch</button>
+  </form>
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Classes</h2>
+    <span class="pill pill-info">{{ classes.len() }} total</span>
+  </div>
+  {% if classes.is_empty() %}
+  <div class="empty-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4M8 7.5h2m4 0h2M8 11.5h2m4 0h2"/></svg>
+    <h3>No classes yet</h3>
+    <p>Create the first class for this school year to start enrolling students.</p>
+    {% if can_mutate %}
+    <a class="btn-primary mt-4" href="/classes/new{% if let Some(y) = selected_year %}?year={{ y }}{% endif %}">New class</a>
+    {% endif %}
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Name</th><th>Teacher</th><th>Room</th><th style="text-align:right">Enrolled</th><th></th></tr></thead>
+    <tbody>
+      {% for c in classes %}
+      <tr>
+        <td><a href="/classes/{{ c.id }}">{{ c.name }}</a></td>
+        <td>{% if let Some(t) = c.teacher_name %}{{ t }}{% else %}<span style="color:var(--text-muted)">Unassigned</span>{% endif %}</td>
+        <td>{% if let Some(r) = c.room %}{{ r }}{% else %}—{% endif %}</td>
+        <td style="text-align:right">{{ c.enrolled }}{% if let Some(cap) = c.capacity %} / {{ cap }}{% endif %}</td>
+        <td style="text-align:right"><a class="btn-ghost" href="/classes/{{ c.id }}">Open</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">School years</h2>
+  <p class="text-sm mt-1" style="color:var(--text-muted)">One year is current at a time — new classes default to it.</p>
+  {% if years.is_empty() %}
+  <div class="empty-state">
+    <h3>No school years</h3>
+    <p>Create a year below to get started.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Name</th><th>Status</th>{% if can_mutate %}<th></th>{% endif %}</tr></thead>
+    <tbody>
+      {% for y in years %}
+      <tr>
+        <td>{{ y.name }}</td>
+        <td>{% if y.is_current %}<span class="pill pill-info">Current</span>{% else %}<span style="color:var(--text-muted)">Archived</span>{% endif %}</td>
+        {% if can_mutate %}
+        <td style="text-align:right">
+          {% if y.is_current %}
+          {% else %}
+          <form method="post" action="/school-years/{{ y.id }}/set-current" style="display:inline">
+            <button class="btn-secondary" type="submit">Set current</button>
+          </form>
+          {% endif %}
+          <form method="post" action="/school-years/{{ y.id }}/delete" style="display:inline" onsubmit="return confirm('Delete this school year? Its classes and everything under them will be permanently removed. Only empty, non-current years can be deleted.');">
+            <button class="btn-ghost" type="submit" style="color:var(--err)">Delete</button>
+          </form>
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% if can_mutate %}
+  <form method="post" action="/school-years" class="mt-6 pt-6 grid gap-4 sm:grid-cols-4" style="border-top:1px solid var(--border)">
+    <div>
+      <label class="label" for="sy-name">Year name</label>
+      <input class="input" id="sy-name" name="name" type="text" required placeholder="2025/2026">
+    </div>
+    <div>
+      <label class="label" for="sy-start">Start date</label>
+      <input class="input" id="sy-start" name="start_date" type="date" required>
+    </div>
+    <div>
+      <label class="label" for="sy-end">End date</label>
+      <input class="input" id="sy-end" name="end_date" type="date" required>
+    </div>
+    <div class="flex items-end">
+      <button class="btn-primary" type="submit">Add year</button>
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

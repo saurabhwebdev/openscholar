@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}{{ assessment_name }} — Grades — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Record · Grades</p>
+    <h1 class="page-title mt-2">{{ assessment_name }}</h1>
+    <p class="page-sub">{{ class_name }} · {{ kind }} · max {{ max_display }} · weight {{ weight_display }} · {{ date }}</p>
+  </div>
+  <a class="btn-ghost" href="/grades?class_id={{ class_id }}">Back to grades</a>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Scores</h2>
+    <span class="pill pill-info">{{ entries.len() }} students</span>
+  </div>
+  {% if entries.is_empty() %}
+  <div class="empty-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M3 20h18M6 20v-7m6 7V4m6 16v-4"/></svg>
+    <h3>No students enrolled</h3>
+    <p>Enroll students in {{ class_name }} before recording scores for this assessment.</p>
+    <a class="btn-primary mt-4" href="/classes/{{ class_id }}">Open class</a>
+  </div>
+  {% else %}
+  <form method="post" action="/grades/assessments/{{ assessment_id }}/scores">
+    <table class="table mt-4">
+      <thead><tr><th>Student</th><th style="text-align:right">Score (max {{ max_display }})</th></tr></thead>
+      <tbody>
+        {% for e in entries %}
+        <tr>
+          <td>{{ e.full_name }}</td>
+          <td style="text-align:right">
+            {% if can_mutate %}
+            <input class="input" style="max-width:160px;margin-left:auto" type="number" step="0.01" min="0" name="score_{{ e.student_id }}" value="{{ e.score_display }}" placeholder="—" aria-label="Score for {{ e.full_name }}">
+            {% else %}
+            {% if e.score_display.is_empty() %}—{% else %}{{ e.score_display }}{% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if can_mutate %}
+    <div class="mt-6 flex items-center gap-4">
+      <button class="btn-primary" type="submit">Save scores</button>
+      <p class="text-sm" style="color:var(--text-muted)">Leave a field empty to clear that score.</p>
+    </div>
+    {% endif %}
+  </form>
+  {% endif %}
+</div>
+
+{% if can_mutate %}
+<div class="card mt-4" style="border-color:color-mix(in oklch, var(--err) 35%, transparent)">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em;color:var(--err)">Danger zone</h2>
+  <p class="text-sm mt-1" style="color:var(--text-muted)">Deleting this assessment permanently removes its grades. This cannot be undone.</p>
+  <form method="post" action="/grades/assessments/{{ assessment_id }}/delete" class="mt-4" onsubmit="return confirm('Delete this assessment? Its grades will be permanently removed.');">
+    <button class="btn-ghost" type="submit" style="color:var(--err)">Delete assessment</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

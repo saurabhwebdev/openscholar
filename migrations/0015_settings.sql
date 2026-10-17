@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS grading_scales (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL, min_score NUMERIC(6,2) NOT NULL, max_score NUMERIC(6,2) NOT NULL, grade TEXT NOT NULL, points NUMERIC(4,2) NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), CHECK (max_score >= min_score));
+CREATE TABLE IF NOT EXISTS semesters (id BIGSERIAL PRIMARY KEY, school_year_id BIGINT NOT NULL REFERENCES school_years(id) ON DELETE CASCADE, name TEXT NOT NULL, start_date DATE NOT NULL, end_date DATE NOT NULL, is_current BOOLEAN NOT NULL DEFAULT FALSE, UNIQUE (school_year_id, name), CHECK (end_date >= start_date));
+CREATE INDEX IF NOT EXISTS idx_semesters_year ON semesters (school_year_id);

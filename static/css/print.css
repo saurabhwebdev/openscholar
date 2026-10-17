@@ -1,0 +1,108 @@
+/* OpenScholar print documents — self-contained (no app.css dependency),
+   designed for screen reading AND browser Print-to-PDF. */
+
+.print-screen {
+  background: #e8eaf1;
+  min-height: 100vh;
+  padding: 24px 16px 64px;
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #16161d;
+}
+
+.print-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 820px;
+  margin: 0 auto 24px;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid #dfe2ee;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgb(16 16 29 / 0.06), 0 4px 12px rgb(16 16 29 / 0.06);
+  font-size: 14px;
+}
+
+.pbtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 40px; padding: 0 16px; border-radius: 8px;
+  background: #4f46e5; color: #fff; font-size: 14px; font-weight: 500;
+  border: 1px solid transparent; cursor: pointer;
+}
+.pbtn:hover { background: #4338ca; }
+.pbtn-ghost {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 40px; padding: 0 16px; border-radius: 8px;
+  color: #4f46e5; font-size: 14px; font-weight: 500; text-decoration: none;
+}
+.pbtn-ghost:hover { background: rgba(79, 70, 229, 0.08); }
+.print-toolbar :focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; }
+
+/* ---------- the paper ---------- */
+.print-doc {
+  background: #fff;
+  color: #16161d;
+  border-radius: 12px;
+  padding: 48px;
+  max-width: 820px;
+  margin: 0 auto;
+  box-shadow: 0 2px 4px rgb(16 16 29 / 0.08), 0 12px 32px rgb(16 16 29 / 0.12);
+}
+
+.doc-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid #16161d;
+}
+.doc-brand {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0;
+  background: #4f46e5;
+}
+.doc-school { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #5b5f76; }
+.doc-title { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; margin-top: 4px; }
+.doc-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px 24px;
+  margin-top: 24px;
+  font-size: 14px;
+}
+.doc-meta dt { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #5b5f76; font-weight: 600; }
+.doc-meta dd { margin: 2px 0 0; font-weight: 500; }
+
+.doc-band {
+  display: flex; flex-wrap: wrap; gap: 32px;
+  margin-top: 24px; padding: 16px 24px;
+  background: #f4f5fa; border-radius: 8px;
+}
+.doc-band .stat { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.doc-band .lbl { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #5b5f76; font-weight: 600; }
+
+.print-doc h2.sec { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; margin: 32px 0 4px; }
+.print-doc h3.sub { font-size: 15px; font-weight: 600; margin: 20px 0 4px; }
+.print-doc p.note { font-size: 14px; color: #5b5f76; }
+
+.print-doc table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px; font-variant-numeric: tabular-nums; }
+.print-doc th, .print-doc td { border: 1px solid #b9bdd2; padding: 8px 12px; text-align: left; }
+.print-doc th { background: #eef0f7; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+.print-doc td.num, .print-doc th.num { text-align: right; }
+
+.doc-sign {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 48px;
+  margin-top: 64px;
+}
+.doc-sign .line { border-top: 1px solid #16161d; padding-top: 8px; font-size: 13px; color: #5b5f76; }
+.doc-foot { margin-top: 32px; padding-top: 16px; border-top: 1px solid #dfe2ee; font-size: 12px; color: #5b5f76; }
+
+@media print {
+  @page { margin: 15mm; }
+  .print-screen { background: #fff; padding: 0; min-height: auto; }
+  .no-print { display: none !important; }
+  .print-doc { border-radius: 0; box-shadow: none; padding: 0; max-width: 100%; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  a { color: #000 !important; text-decoration: none !important; }
+}

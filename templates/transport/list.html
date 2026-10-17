@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Transport — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Manage · Transport</p>
+    <h1 class="page-title mt-2">Transport</h1>
+    <p class="page-sub">Vehicles, routes, stops and riders.</p>
+  </div>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Vehicles</h2>
+    <span class="pill pill-info">{{ vehicles.len() }}</span>
+  </div>
+  {% if vehicles.is_empty() %}
+  <div class="empty-state">
+    <h3>No vehicles</h3>
+    <p>Add a vehicle to get started.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Reg no</th><th>Kind</th><th>Capacity</th><th>Driver</th><th></th></tr></thead>
+    <tbody>
+      {% for v in vehicles %}
+      <tr>
+        <td>{{ v.reg_no }}</td>
+        <td>{{ v.kind }}</td>
+        <td>{{ v.capacity }}</td>
+        <td>{% if let Some(n) = v.driver_name %}{{ n }}{% else %}—{% endif %}</td>
+        <td style="text-align:right">
+          <form method="post" action="/vehicles/{{ v.id }}/delete" onsubmit="return confirm('Delete vehicle {{ v.reg_no }}?')">
+            <button class="btn-ghost" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <form method="post" action="/vehicles" class="mt-6 grid gap-4 sm:grid-cols-2">
+    <div>
+      <label class="label" for="reg_no">Registration no</label>
+      <input class="input" id="reg_no" name="reg_no" type="text" required>
+    </div>
+    <div>
+      <label class="label" for="kind">Kind</label>
+      <select class="input" id="kind" name="kind">
+        <option value="bus">Bus</option>
+        <option value="van">Van</option>
+        <option value="car">Car</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div>
+      <label class="label" for="capacity">Capacity</label>
+      <input class="input" id="capacity" name="capacity" type="number" min="1" value="1">
+    </div>
+    <div>
+      <label class="label" for="driver_name">Driver name</label>
+      <input class="input" id="driver_name" name="driver_name" type="text">
+    </div>
+    <div>
+      <label class="label" for="driver_phone">Driver phone</label>
+      <input class="input" id="driver_phone" name="driver_phone" type="text">
+    </div>
+    <div class="sm:col-span-2">
+      <button class="btn-primary" type="submit">Add vehicle</button>
+    </div>
+  </form>
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Routes</h2>
+    <span class="pill pill-info">{{ routes.len() }}</span>
+  </div>
+  {% if routes.is_empty() %}
+  <div class="empty-state">
+    <h3>No routes</h3>
+    <p>Create a route and assign stops.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Name</th><th>Vehicle</th><th>Fee</th><th>Riders</th><th></th></tr></thead>
+    <tbody>
+      {% for r in routes %}
+      <tr>
+        <td><a class="btn-ghost" href="/transport-routes/{{ r.id }}/stops">{{ r.name }}</a></td>
+        <td>{% if let Some(v) = r.vehicle_reg %}{{ v }}{% else %}—{% endif %}</td>
+        <td>{{ r.fee_cents }}</td>
+        <td>{{ r.riders_count }}</td>
+        <td style="text-align:right">
+          <form method="post" action="/transport-routes/{{ r.id }}/delete" onsubmit="return confirm('Delete route {{ r.name }}?')">
+            <button class="btn-ghost" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <form method="post" action="/transport-routes" class="mt-6 grid gap-4 sm:grid-cols-2">
+    <div>
+      <label class="label" for="route_name">Route name</label>
+      <input class="input" id="route_name" name="name" type="text" required>
+    </div>
+    <div>
+      <label class="label" for="vehicle_id">Vehicle (optional)</label>
+      <select class="input" id="vehicle_id" name="vehicle_id">
+        <option value="">— none —</option>
+        {% for v in vehicles %}
+        <option value="{{ v.id }}">{{ v.reg_no }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="label" for="fee_cents">Fee (cents)</label>
+      <input class="input" id="fee_cents" name="fee_cents" type="number" min="0" value="0">
+    </div>
+    <div class="sm:col-span-2">
+      <button class="btn-primary" type="submit">Add route</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

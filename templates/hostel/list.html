@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Hostel — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Manage · Hostel</p>
+    <h1 class="page-title mt-2">Hostel</h1>
+    <p class="page-sub">Rooms, occupancy and allocations.</p>
+  </div>
+  <a class="btn-secondary" href="/hostel/my">My allocations</a>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Rooms</h2>
+    <span class="pill pill-info">{{ rooms.len() }}</span>
+  </div>
+  {% if rooms.is_empty() %}
+  <div class="empty-state">
+    <h3>No rooms</h3>
+    <p>Add a room to get started.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Name</th><th>Block</th><th>Capacity</th><th>Occupied</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rooms %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td>{% if let Some(b) = r.block %}{{ b }}{% else %}—{% endif %}</td>
+        <td>{{ r.capacity }}</td>
+        <td>
+          {% if r.open_count >= r.capacity as i64 %}
+          <span class="pill pill-err">Full · {{ r.open_count }}/{{ r.capacity }}</span>
+          {% else %}
+          <span class="pill pill-info">{{ r.open_count }}/{{ r.capacity }}</span>
+          {% endif %}
+        </td>
+        <td style="text-align:right">
+          <form method="post" action="/hostel/rooms/{{ r.id }}/delete" onsubmit="return confirm('Delete room {{ r.name }}?')">
+            <button class="btn-ghost" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <form method="post" action="/hostel/rooms" class="mt-6 grid gap-4 sm:grid-cols-3">
+    <div>
+      <label class="label" for="room_name">Room name</label>
+      <input class="input" id="room_name" name="name" type="text" required>
+    </div>
+    <div>
+      <label class="label" for="block">Block (optional)</label>
+      <input class="input" id="block" name="block" type="text">
+    </div>
+    <div>
+      <label class="label" for="capacity">Capacity</label>
+      <input class="input" id="capacity" name="capacity" type="number" min="1" value="1">
+    </div>
+    <div class="sm:col-span-3">
+      <button class="btn-primary" type="submit">Add room</button>
+    </div>
+  </form>
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Allocations</h2>
+    <span class="pill pill-info">{{ allocations.len() }}</span>
+  </div>
+  {% if allocations.is_empty() %}
+  <div class="empty-state">
+    <h3>No allocations</h3>
+    <p>Allocate a student to a room.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Student</th><th>Room</th><th>Bed</th><th>Allocated</th><th>Released</th><th></th></tr></thead>
+    <tbody>
+      {% for a in allocations %}
+      <tr>
+        <td>{% if let Some(n) = a.student_name %}{{ n }}{% else %}#{{ a.student_id }}{% endif %}</td>
+        <td>{% if let Some(n) = a.room_name %}{{ n }}{% else %}#{{ a.room_id }}{% endif %}</td>
+        <td>{% if let Some(b) = a.bed_label %}{{ b }}{% else %}—{% endif %}</td>
+        <td>{{ a.allocated_on }}</td>
+        <td>{% if let Some(d) = a.released_on %}{{ d }}{% else %}<span class="pill pill-ok">Open</span>{% endif %}</td>
+        <td style="text-align:right">
+          {% if a.released_on.is_none() %}
+          <form method="post" action="/hostel/allocations/{{ a.id }}/release">
+            <button class="btn-ghost" type="submit">Release</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <form method="post" action="/hostel/allocations" class="mt-6 grid gap-4 sm:grid-cols-3">
+    <div>
+      <label class="label" for="student_id">Student</label>
+      <select class="input" id="student_id" name="student_id" required>
+        <option value="">— select —</option>
+        {% for s in students %}
+        <option value="{{ s.id }}">{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="label" for="room_id">Room</label>
+      <select class="input" id="room_id" name="room_id" required>
+        <option value="">— select —</option>
+        {% for r in rooms %}
+        <option value="{{ r.id }}">{{ r.name }} ({{ r.open_count }}/{{ r.capacity }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="label" for="bed_label">Bed label (optional)</label>
+      <input class="input" id="bed_label" name="bed_label" type="text" maxlength="32">
+    </div>
+    <div class="sm:col-span-3">
+      <button class="btn-primary" type="submit">Allocate</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

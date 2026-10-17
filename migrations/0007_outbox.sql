@@ -1,0 +1,2 @@
+CREATE TABLE IF NOT EXISTS email_outbox (id BIGSERIAL PRIMARY KEY, to_addr TEXT NOT NULL, subject TEXT NOT NULL, body TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','sent','failed')), attempts INT NOT NULL DEFAULT 0, last_error TEXT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), sent_at TIMESTAMPTZ NULL);
+CREATE INDEX IF NOT EXISTS idx_outbox_status ON email_outbox (status);

@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Library — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Manage · Library</p>
+    <h1 class="page-title mt-2">Library catalog</h1>
+    <p class="page-sub">Search books, add new titles, borrow and return.</p>
+  </div>
+  <a class="btn-secondary" href="/library/loans">Open loans</a>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% else if flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6">
+  <form method="get" action="/library" class="flex flex-wrap items-end gap-4">
+    <div class="grow" style="min-width:220px">
+      <label class="label" for="q">Search</label>
+      <input class="input" id="q" name="q" type="search" value="{{ q }}" placeholder="Title, author, ISBN, category" autocomplete="off">
+    </div>
+    <button class="btn-secondary" type="submit">Search</button>
+  </form>
+</div>
+
+{% if can_edit %}
+<div class="card mt-4">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Add book</h2>
+  <form method="post" action="/books" class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div>
+      <label class="label" for="title">Title</label>
+      <input class="input" id="title" name="title" type="text" required>
+    </div>
+    <div>
+      <label class="label" for="isbn">ISBN</label>
+      <input class="input" id="isbn" name="isbn" type="text">
+    </div>
+    <div>
+      <label class="label" for="author">Author</label>
+      <input class="input" id="author" name="author" type="text">
+    </div>
+    <div>
+      <label class="label" for="category">Category</label>
+      <input class="input" id="category" name="category" type="text">
+    </div>
+    <div>
+      <label class="label" for="copies">Copies</label>
+      <input class="input" id="copies" name="copies" type="number" min="1" value="1" required>
+    </div>
+    <div>
+      <label class="label" for="available">Available</label>
+      <input class="input" id="available" name="available" type="number" min="0" value="1">
+    </div>
+    <div class="sm:col-span-2 lg:col-span-3">
+      <button class="btn-primary" type="submit">Add book</button>
+    </div>
+  </form>
+</div>
+
+<div class="card mt-4">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Borrow</h2>
+  <form method="post" action="/library/borrow" class="mt-4 grid gap-4 sm:grid-cols-3">
+    <div>
+      <label class="label" for="book_id">Book</label>
+      <select class="input" id="book_id" name="book_id" required>
+        {% for b in books %}
+        <option value="{{ b.id }}">{{ b.title }} ({{ b.available }}/{{ b.copies }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="label" for="student_id">Student</label>
+      <select class="input" id="student_id" name="student_id" required>
+        {% for s in students %}
+        <option value="{{ s.id }}">{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="label" for="due_on">Due date</label>
+      <input class="input" id="due_on" name="due_on" type="date" required>
+    </div>
+    <div class="sm:col-span-3">
+      <button class="btn-primary" type="submit">Borrow</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Catalog</h2>
+    <span class="pill pill-info">{{ books.len() }}</span>
+  </div>
+  {% if books.is_empty() %}
+  <div class="empty-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></svg>
+    <h3>No books found</h3>
+    <p>{% if q.is_empty() %}No books in the catalog yet.{% else %}Nothing matches this search.{% endif %}</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Title</th><th>Author</th><th>Category</th><th style="text-align:right">Available</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
+    <tbody>
+      {% for b in books %}
+      <tr>
+        <td>{{ b.title }}{% if let Some(isbn) = b.isbn %}<div class="text-xs" style="color:var(--text-muted)">{{ isbn }}</div>{% endif %}</td>
+        <td>{% if let Some(a) = b.author %}{{ a }}{% else %}—{% endif %}</td>
+        <td>{% if let Some(c) = b.category %}{{ c }}{% else %}—{% endif %}</td>
+        <td style="text-align:right">{{ b.available }}/{{ b.copies }}</td>
+        {% if can_edit %}
+        <td style="text-align:right">
+          <form method="post" action="/books/{{ b.id }}/delete" onsubmit="return confirm('Delete this book?')">
+            <button class="btn-ghost" type="submit">Delete</button>
+          </form>
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

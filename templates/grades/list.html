@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Grades — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Record</p>
+    <h1 class="page-title mt-2">Grades</h1>
+    <p class="page-sub">Assessments and per-student weighted results by class.</p>
+  </div>
+  {% if let Some(name) = selected_class_name %}
+  <span class="pill pill-info">{{ name }}</span>
+  {% endif %}
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6">
+  <form method="get" action="/grades" class="flex flex-wrap items-end gap-4">
+    <div class="flex-1" style="min-width:220px">
+      <label class="label" for="class_id">Class</label>
+      <select class="input" id="class_id" name="class_id" onchange="this.form.submit()">
+        {% for c in classes %}
+        <option value="{{ c.id }}"{% if c.selected %} selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn-secondary" type="submit">Switch</button>
+  </form>
+</div>
+
+{% if selected_class.is_none() %}
+<div class="card mt-4">
+  <div class="empty-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M3 20h18M6 20v-7m6 7V4m6 16v-4"/></svg>
+    <h3>No class selected</h3>
+    <p>There are no classes in the current school year yet. Create a class first, then record assessments here.</p>
+    <a class="btn-primary mt-4" href="/classes">Go to classes</a>
+  </div>
+</div>
+{% else %}
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Assessments</h2>
+    <span class="pill pill-info">{{ assessments.len() }} total</span>
+  </div>
+  {% if assessments.is_empty() %}
+  <div class="empty-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M3 20h18M6 20v-7m6 7V4m6 16v-4"/></svg>
+    <h3>No assessments yet</h3>
+    <p>Create the first assessment for this class using the form below.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Name</th><th>Kind</th><th style="text-align:right">Max</th><th style="text-align:right">Weight</th><th>Date</th><th style="text-align:right">Average</th><th style="text-align:right">Graded</th><th></th></tr></thead>
+    <tbody>
+      {% for a in assessments %}
+      <tr>
+        <td><a class="rowlink" href="/grades/assessments/{{ a.id }}">{{ a.name }}</a></td>
+        <td><span class="pill pill-info">{{ a.kind }}</span></td>
+        <td style="text-align:right">{{ a.max_display }}</td>
+        <td style="text-align:right">{{ a.weight_display }}</td>
+        <td>{{ a.date }}</td>
+        <td style="text-align:right">
+          {% if let Some(avg) = a.avg %}
+          {% if a.avg_ok %}<span class="pill pill-ok">{{ a.avg_display }}</span>{% else %}<span class="pill pill-warn">{{ a.avg_display }}</span>{% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td style="text-align:right">{{ a.graded_count }}</td>
+        <td style="text-align:right"><a class="btn-ghost" href="/grades/assessments/{{ a.id }}">Scores</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+{% if can_mutate %}
+{% if let Some(cid) = selected_class %}
+<div class="card mt-4">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">New assessment</h2>
+  <form method="post" action="/assessments" class="mt-4 grid gap-4 sm:grid-cols-3">
+    <input type="hidden" name="class_id" value="{{ cid }}">
+    <div>
+      <label class="label" for="as-name">Name</label>
+      <input class="input" id="as-name" name="name" type="text" required placeholder="Midterm exam">
+    </div>
+    <div>
+      <label class="label" for="as-kind">Kind</label>
+      <select class="input" id="as-kind" name="kind">
+        <option value="exam">Exam</option>
+        <option value="quiz">Quiz</option>
+        <option value="assignment">Assignment</option>
+        <option value="project">Project</option>
+      </select>
+    </div>
+    <div>
+      <label class="label" for="as-date">Date</label>
+      <input class="input" id="as-date" name="date" type="date" required value="{{ today_date }}">
+    </div>
+    <div>
+      <label class="label" for="as-max">Max score</label>
+      <input class="input" id="as-max" name="max_score" type="number" step="0.01" min="0.01" value="100" required>
+    </div>
+    <div>
+      <label class="label" for="as-weight">Weight</label>
+      <input class="input" id="as-weight" name="weight" type="number" step="0.01" min="0" value="1" required>
+    </div>
+    <div class="flex items-end">
+      <button class="btn-primary" type="submit">Add assessment</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+{% endif %}
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Student overview</h2>
+    <span class="pill pill-info">{{ overview.len() }} students</span>
+  </div>
+  {% if overview.is_empty() %}
+  <div class="empty-state">
+    <h3>No students enrolled</h3>
+    <p>Enroll students in this class to see weighted results here.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Student</th><th style="text-align:right">Graded</th><th style="text-align:right">Weighted %</th></tr></thead>
+    <tbody>
+      {% for s in overview %}
+      <tr>
+        <td>{{ s.full_name }}</td>
+        <td style="text-align:right">{{ s.graded }}</td>
+        <td style="text-align:right">
+          {% if let Some(p) = s.percent %}
+          {% if s.percent_ok %}<span class="pill pill-ok">{{ s.percent_display }}</span>{% else %}<span class="pill pill-warn">{{ s.percent_display }}</span>{% endif %}
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

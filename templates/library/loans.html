@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Library loans — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Manage · Library</p>
+    <h1 class="page-title mt-2">Open loans</h1>
+    <p class="page-sub">Track borrowed books and overdue items.</p>
+  </div>
+  <a class="btn-secondary" href="/library">Catalog</a>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% else if flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6" {% if flash_kind == "error" %}role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Overdue</h2>
+    <span class="pill pill-err">{{ overdue.len() }}</span>
+  </div>
+  {% if overdue.is_empty() %}
+  <div class="empty-state">
+    <h3>No overdue loans</h3>
+    <p>All borrowed books are within their due dates.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Book</th><th>Student</th><th>Borrowed</th><th>Due</th><th></th></tr></thead>
+    <tbody>
+      {% for l in overdue %}
+      <tr>
+        <td>{{ l.book_title }}</td>
+        <td>{{ l.student_name }}</td>
+        <td>{{ l.borrowed_on }}</td>
+        <td><span class="pill pill-err">{{ l.due_on }}</span></td>
+        <td style="text-align:right">
+          <form method="post" action="/library/loans/{{ l.id }}/return">
+            <button class="btn-primary" type="submit">Return</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">All open loans</h2>
+    <span class="pill pill-info">{{ loans.len() }}</span>
+  </div>
+  {% if loans.is_empty() %}
+  <div class="empty-state">
+    <h3>No open loans</h3>
+    <p>Borrowed books will appear here.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Book</th><th>Student</th><th>Borrowed</th><th>Due</th><th></th></tr></thead>
+    <tbody>
+      {% for l in loans %}
+      <tr>
+        <td>{{ l.book_title }}</td>
+        <td>{{ l.student_name }}</td>
+        <td>{{ l.borrowed_on }}</td>
+        <td>{% if l.overdue %}<span class="pill pill-err">{{ l.due_on }}</span>{% else %}{{ l.due_on }}{% endif %}</td>
+        <td style="text-align:right">
+          <form method="post" action="/library/loans/{{ l.id }}/return">
+            <button class="btn-secondary" type="submit">Return</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

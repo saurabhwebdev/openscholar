@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Teacher timetable — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Manage</p>
+    <h1 class="page-title mt-2">Teacher timetable</h1>
+    <p class="page-sub">One teacher's week at a glance — every class they teach, period by period.</p>
+  </div>
+  <a class="btn-secondary" href="/timetable">Class view</a>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6">
+  <form method="get" action="/timetable/teacher" class="flex flex-wrap items-end gap-4">
+    <div class="flex-1" style="min-width:220px">
+      <label class="label" for="staff_id">Teacher</label>
+      <select class="input" id="staff_id" name="staff_id" onchange="this.form.submit()">
+        {% for t in teachers %}
+        <option value="{{ t.id }}"{% if t.selected %} selected{% endif %}>{{ t.full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn-secondary" type="submit">Switch</button>
+  </form>
+</div>
+
+{% if has_staff %}
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">{{ staff_name }}</h2>
+    <span class="pill pill-info">Mon – Fri</span>
+  </div>
+  {% if rows.is_empty() %}
+  <div class="empty-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4m8-4v4"/></svg>
+    <h3>No lessons assigned</h3>
+    <p>{{ staff_name }} has nothing booked this week — add lessons from the class timetable.</p>
+    <a class="btn-secondary mt-4" href="/timetable">Open class timetable</a>
+  </div>
+  {% else %}
+  <div style="overflow-x:auto">
+  <table class="table mt-4">
+    <thead><tr><th>Period</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th></tr></thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <th scope="row" style="white-space:nowrap">{{ row.label }}<br><span class="text-sm font-normal" style="color:var(--text-muted)">{{ row.time_range }}</span></th>
+        {% for cell in row.cells %}
+        <td>
+          {% if let Some(slot) = cell %}
+          <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;background:var(--accent-soft)">
+            <strong>{{ slot.subject_code }}</strong>
+            <div class="text-sm">{{ slot.class_name }}</div>
+            {% if let Some(r) = slot.room %}
+            <div class="text-sm" style="color:var(--text-muted)">Room {{ r }}</div>
+            {% endif %}
+          </div>
+          {% else %}
+          <span class="text-sm" style="color:var(--text-muted);border:1px dashed var(--border);border-radius:var(--radius-sm);display:block;padding:8px;text-align:center">—</span>
+          {% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<div class="card mt-4">
+  <div class="empty-state">
+    <h3>No teachers found</h3>
+    <p>Add active staff first, then view their weekly timetable here.</p>
+    <a class="btn-primary mt-4" href="/staff">Go to staff</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

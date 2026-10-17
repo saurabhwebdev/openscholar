@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Email outbox — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">System</p>
+    <h1 class="page-title mt-2">Email outbox</h1>
+    <p class="page-sub">Queued absence alerts and delivery results. Admins only.</p>
+  </div>
+  <div class="flex items-center gap-4">
+    <span class="pill pill-warn">{{ queued }} queued</span>
+    <span class="pill pill-ok">{{ sent }} sent</span>
+    <span class="pill pill-err">{{ failed }} failed</span>
+    <form method="post" action="/outbox/send-due">
+      <button class="btn-primary" type="submit">Send due</button>
+    </form>
+  </div>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6" style="padding:0;overflow:hidden">
+  {% if mails.is_empty() %}
+  <div class="empty-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><path d="M4 6h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z"/><path d="m3 7 9 6 9-6"/></svg>
+    <h3>Outbox is empty</h3>
+    <p>Absence alerts for linked parents will queue here after attendance is saved.</p>
+  </div>
+  {% else %}
+  <table class="table">
+    <thead><tr><th>To</th><th>Subject</th><th>Status</th><th>Tries</th><th>Queued</th><th>Sent</th><th>Error</th></tr></thead>
+    <tbody>
+      {% for m in mails %}
+      <tr>
+        <td>{{ m.to_addr }}</td>
+        <td>{{ m.subject }}</td>
+        <td><span class="pill {{ m.status_class }}">{{ m.status }}</span></td>
+        <td>{{ m.attempts }}</td>
+        <td>{{ m.created }}</td>
+        <td>{% if let Some(s) = m.sent %}{{ s }}{% else %}—{% endif %}</td>
+        <td>{% if let Some(e) = m.last_error %}{{ e }}{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

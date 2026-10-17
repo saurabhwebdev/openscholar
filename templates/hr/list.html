@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}HR — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Manage · HR</p>
+    <h1 class="page-title mt-2">Staff HR</h1>
+    <p class="page-sub">Attendance, leave requests, and payroll for staff.</p>
+  </div>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+<div class="card mt-6">
+  <form method="get" action="/hr" class="flex flex-wrap items-end gap-4">
+    <div style="min-width:220px">
+      <label class="label" for="staff_id">Staff member</label>
+      <select class="input" id="staff_id" name="staff_id">
+        <option value="">Select…</option>
+        {% for s in staff %}
+        <option value="{{ s.id }}" {% if let Some(sid) = selected_staff_id %}{% if *sid == s.id %}selected{% endif %}{% endif %}>{{ s.full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="min-width:160px">
+      <label class="label" for="month">Month</label>
+      <input class="input" id="month" name="month" type="month" value="{{ month }}">
+    </div>
+    <button class="btn-secondary" type="submit">View</button>
+  </form>
+</div>
+
+{% if let Some(_) = selected_staff_id %}
+<div class="grid gap-4 mt-6 sm:grid-cols-4">
+  <div class="card"><div class="text-2xl font-semibold">{{ summary_present }}</div><div class="text-sm" style="color:var(--text-muted)">Present</div></div>
+  <div class="card"><div class="text-2xl font-semibold">{{ summary_absent }}</div><div class="text-sm" style="color:var(--text-muted)">Absent</div></div>
+  <div class="card"><div class="text-2xl font-semibold">{{ summary_late }}</div><div class="text-sm" style="color:var(--text-muted)">Late</div></div>
+  <div class="card"><div class="text-2xl font-semibold">{{ summary_leave }}</div><div class="text-sm" style="color:var(--text-muted)">Leave</div></div>
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Attendance this month</h2>
+    <span class="pill pill-info">{{ attendance.len() }} records</span>
+  </div>
+  {% if attendance.is_empty() %}
+  <div class="empty-state"><h3>No attendance recorded</h3><p>Mark attendance below.</p></div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Date</th><th>Status</th><th>Note</th></tr></thead>
+    <tbody>
+      {% for a in attendance %}
+      <tr>
+        <td>{{ a.date }}</td>
+        <td>
+          {% if a.status == "present" %}<span class="pill pill-ok">Present</span>
+          {% elif a.status == "absent" %}<span class="pill pill-err">Absent</span>
+          {% elif a.status == "late" %}<span class="pill pill-warn">Late</span>
+          {% else %}<span class="pill pill-info">Leave</span>{% endif %}
+        </td>
+        <td style="color:var(--text-muted)">{{ a.note }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Mark attendance</h2>
+  <form method="post" action="/hr/attendance" class="mt-4 grid gap-4 sm:grid-cols-4">
+    <input type="hidden" name="staff_id" value="{% if let Some(sid) = selected_staff_id %}{{ sid }}{% endif %}">
+    <div>
+      <label class="label" for="date">Date</label>
+      <input class="input" id="date" name="date" type="date" required>
+    </div>
+    <div>
+      <label class="label" for="status">Status</label>
+      <select class="input" id="status" name="status">
+        <option value="present">Present</option>
+        <option value="absent">Absent</option>
+        <option value="late">Late</option>
+        <option value="leave">Leave</option>
+      </select>
+    </div>
+    <div>
+      <label class="label" for="note">Note</label>
+      <input class="input" id="note" name="note" type="text">
+    </div>
+    <div class="flex items-end">
+      <button class="btn-primary" type="submit">Save</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<div class="card mt-6">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Leave requests</h2>
+    <span class="pill pill-info">{{ leaves.len() }}</span>
+  </div>
+  {% if leaves.is_empty() %}
+  <div class="empty-state"><h3>No leave requests</h3><p>Submit one below.</p></div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Staff</th><th>Type</th><th>Dates</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for l in leaves %}
+      <tr>
+        <td>{{ l.staff_name }}</td>
+        <td>{{ l.leave_type }}</td>
+        <td>{{ l.start_date }} → {{ l.end_date }}</td>
+        <td style="color:var(--text-muted)">{{ l.reason }}</td>
+        <td>
+          {% if l.status == "approved" %}<span class="pill pill-ok">Approved</span>
+          {% elif l.status == "rejected" %}<span class="pill pill-err">Rejected</span>
+          {% else %}<span class="pill pill-warn">Pending</span>{% endif %}
+        </td>
+        <td style="text-align:right">
+          {% if l.status == "pending" %}
+          <form method="post" action="/hr/leave/{{ l.id }}/approve" style="display:inline"><button class="btn-ghost" type="submit">Approve</button></form>
+          <form method="post" action="/hr/leave/{{ l.id }}/reject" style="display:inline"><button class="btn-ghost" type="submit">Reject</button></form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">New leave request</h2>
+  <form method="post" action="/hr/leave" class="mt-4 grid gap-4 sm:grid-cols-2">
+    <div>
+      <label class="label" for="l_staff">Staff member</label>
+      <select class="input" id="l_staff" name="staff_id" required>
+        <option value="">Select…</option>
+        {% for s in staff %}
+        <option value="{{ s.id }}">{{ s.full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="label" for="leave_type">Type</label>
+      <select class="input" id="leave_type" name="leave_type">
+        <option value="annual">Annual</option>
+        <option value="sick">Sick</option>
+        <option value="personal">Personal</option>
+        <option value="unpaid">Unpaid</option>
+      </select>
+    </div>
+    <div>
+      <label class="label" for="start_date">Start</label>
+      <input class="input" id="start_date" name="start_date" type="date" required>
+    </div>
+    <div>
+      <label class="label" for="end_date">End</label>
+      <input class="input" id="end_date" name="end_date" type="date" required>
+    </div>
+    <div class="sm:col-span-2">
+      <label class="label" for="reason">Reason</label>
+      <input class="input" id="reason" name="reason" type="text">
+    </div>
+    <div>
+      <button class="btn-primary" type="submit">Submit</button>
+    </div>
+  </form>
+</div>
+
+<div class="card mt-6">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Payroll runs</h2>
+    <span class="pill pill-info">{{ payrolls.len() }}</span>
+  </div>
+  {% if payrolls.is_empty() %}
+  <div class="empty-state"><h3>No payroll runs</h3><p>Record one below.</p></div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th>Staff</th><th>Period</th><th style="text-align:right">Base</th><th style="text-align:right">Allowance</th><th style="text-align:right">Deduction</th><th style="text-align:right">Net</th><th>Paid on</th><th></th></tr></thead>
+    <tbody>
+      {% for p in payrolls %}
+      <tr>
+        <td>{{ p.staff_name }}</td>
+        <td>{{ p.period_label }}</td>
+        <td style="text-align:right">{{ p.base }}</td>
+        <td style="text-align:right">{{ p.allowance }}</td>
+        <td style="text-align:right">{{ p.deduction }}</td>
+        <td style="text-align:right">{{ p.net }}</td>
+        <td style="color:var(--text-muted)">{{ p.paid_on }}</td>
+        <td style="text-align:right">
+          <form method="post" action="/hr/payroll/{{ p.id }}/delete" style="display:inline" onsubmit="return confirm('Delete this payroll run?')"><button class="btn-ghost" type="submit">Delete</button></form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">New payroll run</h2>
+  <form method="post" action="/hr/payroll" class="mt-4 grid gap-4 sm:grid-cols-2">
+    <div>
+      <label class="label" for="p_staff">Staff member</label>
+      <select class="input" id="p_staff" name="staff_id" required>
+        <option value="">Select…</option>
+        {% for s in staff %}
+        <option value="{{ s.id }}">{{ s.full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="label" for="period_label">Period label</label>
+      <input class="input" id="period_label" name="period_label" type="text" required placeholder="e.g. 2026-10">
+    </div>
+    <div>
+      <label class="label" for="base">Base</label>
+      <input class="input" id="base" name="base" type="text" value="0">
+    </div>
+    <div>
+      <label class="label" for="allowance">Allowance</label>
+      <input class="input" id="allowance" name="allowance" type="text" value="0">
+    </div>
+    <div>
+      <label class="label" for="deduction">Deduction</label>
+      <input class="input" id="deduction" name="deduction" type="text" value="0">
+    </div>
+    <div class="flex items-end">
+      <button class="btn-primary" type="submit">Record</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

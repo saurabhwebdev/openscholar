@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}{{ invoice.title }} — OpenScholar{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="eyebrow">Record · Fees · {{ invoice.admission_no }}</p>
+    <h1 class="page-title mt-2">{{ invoice.title }}</h1>
+    <p class="page-sub">{{ invoice.student_name }} · due {{ invoice.due }}</p>
+  </div>
+  <div class="flex items-center gap-3">
+    {% if invoice.status == "paid" %}<span class="pill pill-ok">Paid</span>
+    {% else if invoice.status == "partial" %}<span class="pill pill-warn">Partial</span>
+    {% else if invoice.status == "overdue" %}<span class="pill pill-err">Overdue</span>
+    {% else %}<span class="pill pill-err">Unpaid</span>{% endif %}
+    {% if let Some(cn) = category_name %}<span class="pill pill-info">{{ cn }}</span>{% endif %}
+    <a class="btn-ghost" href="/fees">All fees</a>
+  </div>
+</div>
+
+{% if let Some(msg) = flash %}
+<div class="{% if flash_kind == "error" %}flash-err{% elif flash_kind == "ok" %}flash-ok{% else %}flash-info{% endif %} mt-6"{% if flash_kind == "error" %} role="alert"{% endif %}>{{ msg }}</div>
+{% endif %}
+
+{% if invoice.status == "overdue" %}
+<div class="flash-err mt-6" role="alert">This invoice is overdue — due {{ invoice.due }} with {{ invoice.balance }} still owing.</div>
+{% endif %}
+
+<div class="card mt-6">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Summary</h2>
+  </div>
+  <table class="table mt-4">
+    <thead><tr><th>Amount</th><th style="text-align:right">Paid</th><th style="text-align:right">Balance</th><th style="text-align:right">Due</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>{{ invoice.amount }}</td>
+        <td style="text-align:right">{{ invoice.paid }}</td>
+        <td style="text-align:right">{{ invoice.balance }}</td>
+        <td style="text-align:right">{{ invoice.due }}</td>
+      </tr>
+    </tbody>
+  </table>
+  {% if discount != "0.00" %}<p class="text-sm mt-3" style="color:var(--text-muted)">Discount applied: {{ discount }}</p>{% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Payments</h2>
+    <span class="pill pill-info">{{ payments.len() }} total</span>
+  </div>
+  {% if payments.is_empty() %}
+  <div class="empty-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin:0 auto"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/><path d="M6.5 9.5h.01M17.5 15.5h.01"/></svg>
+    <h3>No payments yet</h3>
+    <p>Record the first payment below — it will appear here.</p>
+  </div>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th style="text-align:right">Amount</th><th>Method</th><th>Reference</th><th>Paid at</th><th></th></tr></thead>
+    <tbody>
+      {% for p in payments %}
+      <tr>
+        <td style="text-align:right">{{ p.amount }}</td>
+        <td>{{ p.method }}</td>
+        <td>{% if p.reference.is_empty() %}—{% else %}{{ p.reference }}{% endif %}</td>
+        <td>{{ p.paid_at }}</td>
+        <td style="text-align:right"><a class="btn-ghost" href="/print/payments/{{ p.id }}/receipt">Receipt</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+{% if can_mutate %}
+<div class="card mt-4">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Fines</h2>
+    <span class="pill pill-info">{{ fines.len() }} total</span>
+  </div>
+  {% if fines.is_empty() %}
+  <p class="text-sm mt-3" style="color:var(--text-muted)">No fines recorded.</p>
+  {% else %}
+  <table class="table mt-4">
+    <thead><tr><th style="text-align:right">Amount</th><th>Reason</th><th></th></tr></thead>
+    <tbody>
+      {% for f in fines %}
+      <tr>
+        <td style="text-align:right">{{ f.amount }}</td>
+        <td>{{ f.reason }}</td>
+        <td style="text-align:right">
+          <form method="post" action="/fines/{{ f.id }}/delete" onsubmit="return confirm('Delete this fine?')">
+            <button class="btn-ghost" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <form method="post" action="/fees/{{ invoice.id }}/fines" class="mt-4 grid gap-4 sm:grid-cols-2">
+    <div>
+      <label class="label" for="fine_amount">Amount</label>
+      <input class="input" id="fine_amount" name="amount" type="text" required placeholder="10.00" inputmode="decimal">
+    </div>
+    <div>
+      <label class="label" for="fine_reason">Reason</label>
+      <input class="input" id="fine_reason" name="reason" type="text" required placeholder="Late payment">
+    </div>
+    <div class="sm:col-span-2">
+      <button class="btn-secondary" type="submit">Add fine</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+{% if can_mutate %}
+<div class="card mt-4">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Record payment</h2>
+  <p class="text-sm mt-1" style="color:var(--text-muted)">Balance owing: {{ invoice.balance }}. Overpayments are rejected.</p>
+  <form method="post" action="/fees/{{ invoice.id }}/payments" class="mt-4 grid gap-4 sm:grid-cols-2">
+    <div>
+      <label class="label" for="amount">Amount (e.g. 500 or 5.00)</label>
+      <input class="input" id="amount" name="amount" type="text" required placeholder="500.00" inputmode="decimal" autocomplete="off">
+    </div>
+    <div>
+      <label class="label" for="method">Method</label>
+      <select class="input" id="method" name="method">
+        <option value="cash">cash</option>
+        <option value="card">card</option>
+        <option value="bank_transfer">bank_transfer</option>
+        <option value="online">online</option>
+        <option value="other">other</option>
+      </select>
+    </div>
+    <div class="sm:col-span-2">
+      <label class="label" for="reference">Reference (optional)</label>
+      <input class="input" id="reference" name="reference" type="text" placeholder="Receipt or transaction ref" maxlength="200" autocomplete="off">
+    </div>
+    <div class="sm:col-span-2">
+      <button class="btn-primary" type="submit">Record payment</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+{% if can_mutate %}
+<div class="card mt-4">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em">Apply discount</h2>
+  <form method="post" action="/fees/{{ invoice.id }}/discount" class="mt-4 grid gap-4 sm:grid-cols-2">
+    <div>
+      <label class="label" for="discount_id">Discount (id, optional)</label>
+      <input class="input" id="discount_id" name="discount_id" type="text" placeholder="1">
+    </div>
+    <div>
+      <label class="label" for="percent">Or percent</label>
+      <input class="input" id="percent" name="percent" type="text" placeholder="10">
+    </div>
+    <div class="sm:col-span-2">
+      <button class="btn-secondary" type="submit">Apply discount</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+{% if can_mutate %}
+<div class="card mt-4">
+  <h2 class="text-lg font-semibold" style="letter-spacing:-0.01em;color:var(--err)">Danger zone</h2>
+  <p class="text-sm mt-1" style="color:var(--text-muted)">Delete this invoice permanently. Only possible when no payments have been recorded — otherwise record adjustments instead.</p>
+  <form method="post" action="/fees/{{ invoice.id }}/delete" class="mt-4" onsubmit="return confirm('Delete this invoice? This cannot be undone.')">
+    <button class="btn-secondary" type="submit" style="color:var(--err);border-color:color-mix(in oklch, var(--err) 40%, transparent)">Delete invoice</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}
