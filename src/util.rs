@@ -1,3 +1,5 @@
+#![allow(clippy::manual_is_multiple_of)] // is_multiple_of not stable; keep compatibility
+
 /// Format an amount in minor units (cents) as a human string: `123456` -> `"1,234.56"`.
 pub fn format_cents(cents: i64) -> String {
     let negative = cents < 0;
