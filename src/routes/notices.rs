@@ -1,9 +1,9 @@
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{Html, IntoResponse, Redirect},
     routing::{get, post},
-    Router,
 };
 use serde::Deserialize;
 
@@ -93,7 +93,10 @@ async fn list_bulletin(
         user_initial,
         flash: params.flash,
         flash_kind: params.flash_kind.unwrap_or_else(|| "info".to_string()),
-        notices: notice_rows.iter().map(|r| model::notice_to_view(r, now)).collect(),
+        notices: notice_rows
+            .iter()
+            .map(|r| model::notice_to_view(r, now))
+            .collect(),
         events: event_rows.iter().map(model::event_to_view).collect(),
         can_manage: can_manage(&user),
     };
@@ -143,7 +146,11 @@ async fn create_notice_submit(
         Ok(_) => Ok(flash_redirect("/notices", "Notice published", "ok")),
         Err(e) => {
             tracing::error!(error = %e, "create notice failed");
-            Ok(flash_redirect("/notices", "Could not publish notice", "error"))
+            Ok(flash_redirect(
+                "/notices",
+                "Could not publish notice",
+                "error",
+            ))
         }
     }
 }

@@ -110,12 +110,11 @@ pub async fn mark_all_read(pool: &PgPool, user_id: i64) -> Result<u64, AppError>
 /// Delete this user's already-read notifications. Scoped to the owner so
 /// one user can never clear another user's inbox. Returns rows deleted.
 pub async fn clear_read(pool: &PgPool, user_id: i64) -> Result<u64, AppError> {
-    let result = sqlx::query(
-        "DELETE FROM notifications WHERE user_id = $1 AND read_at IS NOT NULL",
-    )
-    .bind(user_id)
-    .execute(pool)
-    .await?;
+    let result =
+        sqlx::query("DELETE FROM notifications WHERE user_id = $1 AND read_at IS NOT NULL")
+            .bind(user_id)
+            .execute(pool)
+            .await?;
     Ok(result.rows_affected())
 }
 
@@ -182,9 +181,18 @@ mod tests {
         make_notification(&pool, me, "Old", true).await;
         let theirs = make_notification(&pool, other, "Theirs", false).await;
 
-        assert_eq!(list_for(&pool, me, NotificationFilter::All).await.unwrap().len(), 3);
         assert_eq!(
-            list_for(&pool, me, NotificationFilter::Unread).await.unwrap().len(),
+            list_for(&pool, me, NotificationFilter::All)
+                .await
+                .unwrap()
+                .len(),
+            3
+        );
+        assert_eq!(
+            list_for(&pool, me, NotificationFilter::Unread)
+                .await
+                .unwrap()
+                .len(),
             2
         );
         assert_eq!(unread_count(&pool, me).await.unwrap(), 2);
@@ -204,7 +212,12 @@ mod tests {
 
         assert_eq!(mark_all_read(&pool, me).await.unwrap(), 1);
         assert_eq!(unread_count(&pool, me).await.unwrap(), 0);
-        assert!(list_for(&pool, me, NotificationFilter::Unread).await.unwrap().is_empty());
+        assert!(
+            list_for(&pool, me, NotificationFilter::Unread)
+                .await
+                .unwrap()
+                .is_empty()
+        );
 
         // Cleanup temp rows (table is brand-new; users are unique per run).
         sqlx::query("DELETE FROM notifications WHERE user_id = ANY($1)")

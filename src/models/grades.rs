@@ -191,10 +191,7 @@ pub async fn create_assessment(
 
 /// Header (with class name) plus one entry per enrolled student.
 /// Students without a grade row get `score: None`.
-pub async fn assessment_detail(
-    pool: &PgPool,
-    id: i64,
-) -> Result<AssessmentDetail, AppError> {
+pub async fn assessment_detail(pool: &PgPool, id: i64) -> Result<AssessmentDetail, AppError> {
     let header = sqlx::query_as::<_, AssessmentHeader>(
         "SELECT a.id, a.class_id, c.name AS class_name, a.name, a.kind,
                 a.max_score::FLOAT8 AS max_score,

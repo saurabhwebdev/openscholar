@@ -1,9 +1,9 @@
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, State},
     response::IntoResponse,
     routing::get,
-    Router,
 };
 
 use crate::error::AppError;
@@ -46,10 +46,9 @@ async fn dashboard(
     State(state): State<AppState>,
     Extension(user): Extension<CurrentUser>,
 ) -> Result<impl IntoResponse, AppError> {
-    let students: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM students WHERE status = 'active'")
-            .fetch_one(&state.pool)
-            .await?;
+    let students: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM students WHERE status = 'active'")
+        .fetch_one(&state.pool)
+        .await?;
     let staff: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM staff WHERE status = 'active'")
         .fetch_one(&state.pool)
         .await?;
@@ -111,5 +110,8 @@ async fn dashboard(
             })
             .collect(),
     };
-    template.render().map(axum::response::Html).map_err(AppError::from)
+    template
+        .render()
+        .map(axum::response::Html)
+        .map_err(AppError::from)
 }

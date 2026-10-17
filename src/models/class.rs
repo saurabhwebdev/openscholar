@@ -338,17 +338,17 @@ pub async fn enroll(pool: &PgPool, class_id: i64, student_id: i64) -> Result<(),
             .await?;
     if current_exists && !is_current {
         return Err(AppError::BadRequest(
-            "This class belongs to a past school year; enroll into a current-year class".to_string(),
+            "This class belongs to a past school year; enroll into a current-year class"
+                .to_string(),
         ));
     }
 
-    let already: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM enrollments WHERE class_id = $1 AND student_id = $2",
-    )
-    .bind(class_id)
-    .bind(student_id)
-    .fetch_optional(&mut *tx)
-    .await?;
+    let already: Option<i64> =
+        sqlx::query_scalar("SELECT id FROM enrollments WHERE class_id = $1 AND student_id = $2")
+            .bind(class_id)
+            .bind(student_id)
+            .fetch_optional(&mut *tx)
+            .await?;
     if already.is_some() {
         return Err(AppError::BadRequest(
             "Student is already enrolled in this class".to_string(),

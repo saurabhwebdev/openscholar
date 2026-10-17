@@ -202,10 +202,11 @@ pub fn parse_amount_cents(raw: &str) -> Result<i64, String> {
         None => 0,
         Some(f) => match f.len() {
             0 => 0,
-            1 => f
-                .parse::<i64>()
-                .map_err(|_| "Amount is not a number".to_string())?
-                * 10,
+            1 => {
+                f.parse::<i64>()
+                    .map_err(|_| "Amount is not a number".to_string())?
+                    * 10
+            }
             2 => f
                 .parse::<i64>()
                 .map_err(|_| "Amount is not a number".to_string())?,
@@ -227,11 +228,7 @@ pub fn parse_amount_cents(raw: &str) -> Result<i64, String> {
 
 /// `amount_cents` must be > 0, `method` must be in the allowed set, and the
 /// payment must not exceed the outstanding `balance_cents`.
-pub fn validate_payment(
-    amount_cents: i64,
-    method: &str,
-    balance_cents: i64,
-) -> Result<(), String> {
+pub fn validate_payment(amount_cents: i64, method: &str, balance_cents: i64) -> Result<(), String> {
     if amount_cents <= 0 {
         return Err("Payment amount must be greater than zero".to_string());
     }
@@ -256,10 +253,7 @@ pub fn can_delete_invoice(paid_cents: i64) -> bool {
 
 /// Invoices with `balance > 0`, optional search across student names,
 /// admission no, and title. Capped at 200 rows.
-pub async fn outstanding_invoices(
-    pool: &PgPool,
-    q: &str,
-) -> Result<Vec<OutstandingRow>, AppError> {
+pub async fn outstanding_invoices(pool: &PgPool, q: &str) -> Result<Vec<OutstandingRow>, AppError> {
     let rows = sqlx::query_as::<_, OutstandingRow>(
         "SELECT i.id AS id, i.student_id AS student_id, i.title AS title,
                 (s.first_name || ' ' || s.last_name) AS student_name,
@@ -291,7 +285,6 @@ pub async fn outstanding_invoices(
     .await?;
     Ok(rows)
 }
-
 
 /// Like [`outstanding_invoices`] but optionally restricted to one fee category.
 pub async fn outstanding_invoices_filtered(
@@ -432,21 +425,24 @@ pub async fn record_payment(
     // two concurrent "record payment" clicks can't both pass the check and
     // overpay the invoice into a negative balance.
     let mut tx = pool.begin().await?;
-    let locked: Option<(i64,)> = sqlx::query_as("SELECT amount_cents FROM invoices WHERE id = $1 FOR UPDATE")
-        .bind(invoice_id)
-        .fetch_optional(&mut *tx)
-        .await?;
+    let locked: Option<(i64,)> =
+        sqlx::query_as("SELECT amount_cents FROM invoices WHERE id = $1 FOR UPDATE")
+            .bind(invoice_id)
+            .fetch_optional(&mut *tx)
+            .await?;
     let amount_owed = locked.ok_or(AppError::NotFound)?.0;
-    let paid: i64 =
-        sqlx::query_scalar("SELECT (COALESCE(SUM(amount_cents), 0))::BIGINT FROM payments WHERE invoice_id = $1")
-            .bind(invoice_id)
-            .fetch_one(&mut *tx)
-            .await?;
-    let fines: i64 =
-        sqlx::query_scalar("SELECT (COALESCE(SUM(amount_cents), 0))::BIGINT FROM fee_fines WHERE invoice_id = $1")
-            .bind(invoice_id)
-            .fetch_one(&mut *tx)
-            .await?;
+    let paid: i64 = sqlx::query_scalar(
+        "SELECT (COALESCE(SUM(amount_cents), 0))::BIGINT FROM payments WHERE invoice_id = $1",
+    )
+    .bind(invoice_id)
+    .fetch_one(&mut *tx)
+    .await?;
+    let fines: i64 = sqlx::query_scalar(
+        "SELECT (COALESCE(SUM(amount_cents), 0))::BIGINT FROM fee_fines WHERE invoice_id = $1",
+    )
+    .bind(invoice_id)
+    .fetch_one(&mut *tx)
+    .await?;
     let balance = amount_owed + fines - paid;
     if amount_cents > balance {
         return Err(AppError::BadRequest(
@@ -485,10 +481,7 @@ pub async fn delete_invoice(pool: &PgPool, id: i64) -> Result<bool, AppError> {
 }
 
 /// Total billed / paid / owing for one student (all `::BIGINT`-cast).
-pub async fn student_totals(
-    pool: &PgPool,
-    student_id: i64,
-) -> Result<StudentTotals, AppError> {
+pub async fn student_totals(pool: &PgPool, student_id: i64) -> Result<StudentTotals, AppError> {
     let raw = sqlx::query_as::<_, StudentTotalsRaw>(
         "SELECT
             (COALESCE((SELECT SUM(amount_cents) FROM invoices WHERE student_id = $1), 0)
@@ -611,7 +604,10 @@ mod tests {
 
     #[test]
     fn status_is_paid_when_settled() {
-        assert_eq!(invoice_status(0, 1500, day(2026, 9, 1), day(2026, 10, 1)), "paid");
+        assert_eq!(
+            invoice_status(0, 1500, day(2026, 9, 1), day(2026, 10, 1)),
+            "paid"
+        );
         assert_eq!(
             invoice_status(-100, 1600, day(2026, 9, 1), day(2026, 10, 1)),
             "paid"

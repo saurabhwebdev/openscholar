@@ -144,7 +144,11 @@ pub async fn list_students(pool: &PgPool) -> Result<Vec<StudentRow>, AppError> {
     list_students_paged(pool, 200, 0).await
 }
 
-pub async fn list_students_paged(pool: &PgPool, limit: i64, offset: i64) -> Result<Vec<StudentRow>, AppError> {
+pub async fn list_students_paged(
+    pool: &PgPool,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<StudentRow>, AppError> {
     let rows = sqlx::query_as::<_, StudentRow>(concat!(
         "SELECT ",
         "id, admission_no, first_name, last_name, date_of_birth, gender, guardian_name, guardian_phone, guardian_email, address, status, enrolled_on, created_at",
@@ -171,7 +175,12 @@ pub async fn search_students(pool: &PgPool, q: &str) -> Result<Vec<StudentRow>, 
     search_students_paged(pool, q, 200, 0).await
 }
 
-pub async fn search_students_paged(pool: &PgPool, q: &str, limit: i64, offset: i64) -> Result<Vec<StudentRow>, AppError> {
+pub async fn search_students_paged(
+    pool: &PgPool,
+    q: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<StudentRow>, AppError> {
     let rows = sqlx::query_as::<_, StudentRow>(concat!(
         "SELECT ",
         "id, admission_no, first_name, last_name, date_of_birth, gender, guardian_name, guardian_phone, guardian_email, address, status, enrolled_on, created_at",
@@ -241,9 +250,7 @@ pub async fn update_student(
 /// `admission_no`, code 23505) so routes can bounce back to the form.
 pub fn is_duplicate_admission(err: &AppError) -> bool {
     match err {
-        AppError::Db(sqlx::Error::Database(db)) => {
-            db.code().as_deref() == Some("23505")
-        }
+        AppError::Db(sqlx::Error::Database(db)) => db.code().as_deref() == Some("23505"),
         _ => false,
     }
 }
@@ -254,9 +261,7 @@ mod tests {
 
     #[test]
     fn accepts_fully_valid_student() {
-        assert!(
-            validate_student("ADM-001", "Ada", "Lovelace", Some("female"), "active").is_ok()
-        );
+        assert!(validate_student("ADM-001", "Ada", "Lovelace", Some("female"), "active").is_ok());
     }
 
     #[test]

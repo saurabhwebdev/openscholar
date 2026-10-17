@@ -118,13 +118,8 @@ pub fn grid_lookup<'a>(
 /// via [`grid_lookup`]. Empty when no periods exist (fresh DB, no migrate).
 pub fn build_grid(periods: &[PeriodRow], slots: &[SlotView]) -> Vec<GridRow> {
     let mut day0: Vec<&PeriodRow> = periods.iter().filter(|p| p.weekday == 0).collect();
-    day0.sort_by(|a, b| {
-        a.start
-            .cmp(&b.start)
-            .then_with(|| a.label.cmp(&b.label))
-    });
-    day0
-        .into_iter()
+    day0.sort_by(|a, b| a.start.cmp(&b.start).then_with(|| a.label.cmp(&b.label)));
+    day0.into_iter()
         .map(|p| GridRow {
             label: p.label.clone(),
             time_range: format!("{}–{}", p.start, p.end),
@@ -363,13 +358,14 @@ pub async fn save_slot(
 ) -> Result<i64, AppError> {
     // Validate referenced rows up front so a bad/stale id is a friendly error
     // rather than a raw 500 from a foreign-key violation.
-    let class_ok: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM classes WHERE id = $1)")
-            .bind(class_id)
-            .fetch_one(pool)
-            .await?;
+    let class_ok: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM classes WHERE id = $1)")
+        .bind(class_id)
+        .fetch_one(pool)
+        .await?;
     if !class_ok {
-        return Err(AppError::BadRequest("That class no longer exists".to_string()));
+        return Err(AppError::BadRequest(
+            "That class no longer exists".to_string(),
+        ));
     }
     let subject_ok: bool =
         sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM subjects WHERE id = $1)")
@@ -379,11 +375,10 @@ pub async fn save_slot(
     if !subject_ok {
         return Err(AppError::BadRequest("Unknown subject".to_string()));
     }
-    let period_ok: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM periods WHERE id = $1)")
-            .bind(period_id)
-            .fetch_one(pool)
-            .await?;
+    let period_ok: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM periods WHERE id = $1)")
+        .bind(period_id)
+        .fetch_one(pool)
+        .await?;
     if !period_ok {
         return Err(AppError::BadRequest("Unknown period".to_string()));
     }

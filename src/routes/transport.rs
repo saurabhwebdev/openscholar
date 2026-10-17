@@ -2,19 +2,17 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
 };
 use serde::Deserialize;
 
 use crate::auth::middleware::require_roles;
 use crate::error::AppError;
-use crate::models::student::{list_students, StudentRow};
-use crate::models::transport::{
-    self as tr, RouteInput, RiderInput, StopInput, VehicleInput,
-};
+use crate::models::student::{StudentRow, list_students};
+use crate::models::transport::{self as tr, RiderInput, RouteInput, StopInput, VehicleInput};
 use crate::models::user::{CurrentUser, Role};
 use crate::state::AppState;
 use crate::util;
@@ -385,11 +383,9 @@ async fn create_rider(
             "/transport-routes/{route_id}/stops?flash=Rider+added&flash_kind=ok"
         ))
         .into_response()),
-        Err(AppError::BadRequest(msg)) => Ok(back_to(
-            &format!("/transport-routes/{route_id}/stops"),
-            &msg,
-        )
-        .into_response()),
+        Err(AppError::BadRequest(msg)) => {
+            Ok(back_to(&format!("/transport-routes/{route_id}/stops"), &msg).into_response())
+        }
         Err(e) => Err(e),
     }
 }

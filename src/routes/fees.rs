@@ -1,9 +1,9 @@
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{Html, IntoResponse, Redirect},
     routing::{get, post},
-    Router,
 };
 use serde::Deserialize;
 
@@ -97,8 +97,11 @@ async fn list_fees(
     Query(params): Query<ListParams>,
 ) -> Result<impl IntoResponse, AppError> {
     let q = params.q.unwrap_or_default();
-    let rows = fee_model::outstanding_invoices_filtered(&state.pool, &q, params.category_id).await?;
-    let categories = fee_ext_model::list_categories(&state.pool).await.unwrap_or_default();
+    let rows =
+        fee_model::outstanding_invoices_filtered(&state.pool, &q, params.category_id).await?;
+    let categories = fee_ext_model::list_categories(&state.pool)
+        .await
+        .unwrap_or_default();
     let today = today_naive();
     let (user_name, user_initial) = user_ctx(&user);
     let t = ListTemplate {
@@ -163,7 +166,16 @@ async fn create_invoice_submit(
     .await
     {
         Ok(row) => {
-            if let Err(e) = audit_model::log_action(&state.pool, Some(user.id), "create", "invoice", Some(row.id), Some("invoice created")).await {
+            if let Err(e) = audit_model::log_action(
+                &state.pool,
+                Some(user.id),
+                "create",
+                "invoice",
+                Some(row.id),
+                Some("invoice created"),
+            )
+            .await
+            {
                 tracing::warn!(error = %e, "audit log failed");
             }
             Ok(Redirect::to(&format!("/fees/{}", row.id)))
@@ -344,7 +356,16 @@ async fn delete_invoice_submit(
         ));
     }
     if fee_model::delete_invoice(&state.pool, id).await? {
-        if let Err(e) = audit_model::log_action(&state.pool, Some(user.id), "delete", "invoice", Some(id), Some("invoice deleted")).await {
+        if let Err(e) = audit_model::log_action(
+            &state.pool,
+            Some(user.id),
+            "delete",
+            "invoice",
+            Some(id),
+            Some("invoice deleted"),
+        )
+        .await
+        {
             tracing::warn!(error = %e, "audit log failed");
         }
         Ok(flash_redirect("/fees", "Invoice deleted", "ok"))

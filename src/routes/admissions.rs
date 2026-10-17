@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
 };
 use chrono::NaiveDate;
 use serde::Deserialize;
@@ -13,9 +13,9 @@ use serde::Deserialize;
 use crate::auth::middleware::require_roles;
 use crate::error::AppError;
 use crate::models::admission::{
-    applicant_counts, can_transition, count_for, create_applicant, find_applicant,
-    list_by_status, next_statuses, update_applicant_status, validate_applicant,
-    ApplicantInput, ApplicantView, ALLOWED_STATUSES,
+    ALLOWED_STATUSES, ApplicantInput, ApplicantView, applicant_counts, can_transition, count_for,
+    create_applicant, find_applicant, list_by_status, next_statuses, update_applicant_status,
+    validate_applicant,
 };
 use crate::models::student::StudentInput;
 use crate::models::user::{CurrentUser, Role};
@@ -135,7 +135,10 @@ async fn pipeline(
         accepted_count: count_for(&counts, "accepted"),
         rejected_count: count_for(&counts, "rejected"),
         enrolled_count: count_for(&counts, "enrolled"),
-        new_applicants: new_applicants.into_iter().map(ApplicantView::from).collect(),
+        new_applicants: new_applicants
+            .into_iter()
+            .map(ApplicantView::from)
+            .collect(),
         reviewing: reviewing.into_iter().map(ApplicantView::from).collect(),
         accepted: accepted.into_iter().map(ApplicantView::from).collect(),
         rejected: rejected.into_iter().map(ApplicantView::from).collect(),
@@ -173,9 +176,11 @@ struct ApplicantForm {
 }
 
 fn input_from_form(form: &ApplicantForm) -> Result<ApplicantInput, AppError> {
-    if let Err(msg) =
-        validate_applicant(&form.first_name, &form.last_name, Some(form.gender.as_str()))
-    {
+    if let Err(msg) = validate_applicant(
+        &form.first_name,
+        &form.last_name,
+        Some(form.gender.as_str()),
+    ) {
         return Err(AppError::BadRequest(msg));
     }
     Ok(ApplicantInput {
@@ -295,7 +300,10 @@ async fn detail(
         user_name: user.full_name.clone(),
         user_initial: user_initial(&user),
         applicant: ApplicantView::from(row),
-        next: next_statuses(&status).into_iter().map(str::to_string).collect(),
+        next: next_statuses(&status)
+            .into_iter()
+            .map(str::to_string)
+            .collect(),
         can_enroll: status == "accepted",
         flash,
         flash_kind,
@@ -410,8 +418,7 @@ async fn enroll(
     }
     if row.status != "accepted" {
         return Ok(
-            back_to_form(&detail_url, "Only accepted applicants can be enrolled")
-                .into_response(),
+            back_to_form(&detail_url, "Only accepted applicants can be enrolled").into_response(),
         );
     }
     let admission_no = form.admission_no.trim().to_string();

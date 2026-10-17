@@ -20,8 +20,8 @@ pub fn hash_password(password: &str) -> Result<String, AppError> {
 /// Returns `Ok(())` when the password matches, `Err(Unauthenticated)` otherwise
 /// (same response for unknown hash so logins don't leak which half failed).
 pub fn verify_password(password: &str, hash: &str) -> Result<(), AppError> {
-    let parsed =
-        PasswordHash::new(hash).map_err(|_| AppError::BadRequest("invalid password hash".into()))?;
+    let parsed = PasswordHash::new(hash)
+        .map_err(|_| AppError::BadRequest("invalid password hash".into()))?;
     Argon2::default()
         .verify_password(password.as_bytes(), &parsed)
         .map_err(|_| AppError::Unauthenticated)

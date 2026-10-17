@@ -4,7 +4,7 @@ use chrono::NaiveDate;
 use sqlx::PgPool;
 
 use crate::error::AppError;
-use crate::models::student::{create_student, list_students, validate_student, StudentInput};
+use crate::models::student::{StudentInput, create_student, list_students, validate_student};
 
 /// One row of the `audit_log` table.
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -293,10 +293,7 @@ fn parse_csv(text: &str) -> Vec<Vec<String>> {
     rows
 }
 
-pub async fn csv_import_students(
-    pool: &PgPool,
-    csv_text: &str,
-) -> Result<ImportReport, AppError> {
+pub async fn csv_import_students(pool: &PgPool, csv_text: &str) -> Result<ImportReport, AppError> {
     let mut rows = parse_csv(csv_text);
     // drop header if present
     if !rows.is_empty() {
@@ -319,9 +316,7 @@ pub async fn csv_import_students(
     for (idx, row) in rows.iter().enumerate() {
         let row_no = idx + 1;
         // pad
-        let get = |i: usize| -> String {
-            row.get(i).cloned().unwrap_or_default()
-        };
+        let get = |i: usize| -> String { row.get(i).cloned().unwrap_or_default() };
         let admission_no = get(0).trim().to_string();
         let first_name = get(1).trim().to_string();
         let last_name = get(2).trim().to_string();
@@ -379,13 +374,19 @@ pub async fn csv_import_students(
             Ok(_) => {
                 report.inserted += 1;
             }
-            Err(AppError::Db(sqlx::Error::Database(db))) if db.code().as_deref() == Some("23505") => {
+            Err(AppError::Db(sqlx::Error::Database(db)))
+                if db.code().as_deref() == Some("23505") =>
+            {
                 report.skipped += 1;
             }
             // Record the row that failed and keep going, instead of aborting the
             // whole import with a 500 after some rows already committed.
             Err(e) => {
-                report.errors.push(format!("row {}: {}", report.inserted + report.skipped + report.errors.len() + 1, e));
+                report.errors.push(format!(
+                    "row {}: {}",
+                    report.inserted + report.skipped + report.errors.len() + 1,
+                    e
+                ));
             }
         }
     }

@@ -99,32 +99,67 @@ mod tests {
 
     #[test]
     fn total_pages_math() {
-        let p: Paginated<()> = Paginated { items: vec![], page: 1, per_page: 25, total: 0 };
+        let p: Paginated<()> = Paginated {
+            items: vec![],
+            page: 1,
+            per_page: 25,
+            total: 0,
+        };
         assert_eq!(p.total_pages(), 1);
-        let p: Paginated<()> = Paginated { items: vec![], page: 1, per_page: 25, total: 25 };
+        let p: Paginated<()> = Paginated {
+            items: vec![],
+            page: 1,
+            per_page: 25,
+            total: 25,
+        };
         assert_eq!(p.total_pages(), 1);
-        let p: Paginated<()> = Paginated { items: vec![], page: 1, per_page: 25, total: 26 };
+        let p: Paginated<()> = Paginated {
+            items: vec![],
+            page: 1,
+            per_page: 25,
+            total: 26,
+        };
         assert_eq!(p.total_pages(), 2);
-        let p: Paginated<()> = Paginated { items: vec![], page: 1, per_page: 25, total: 100 };
+        let p: Paginated<()> = Paginated {
+            items: vec![],
+            page: 1,
+            per_page: 25,
+            total: 100,
+        };
         assert_eq!(p.total_pages(), 4);
     }
 
     #[test]
     fn showing_range() {
-        let p: Paginated<()> = Paginated { items: vec![], page: 2, per_page: 25, total: 60 };
+        let p: Paginated<()> = Paginated {
+            items: vec![],
+            page: 2,
+            per_page: 25,
+            total: 60,
+        };
         assert_eq!(p.showing_start(), 26);
         assert_eq!(p.showing_end(), 50);
     }
 
     #[test]
     fn page_numbers_small() {
-        let p: Paginated<()> = Paginated { items: vec![], page: 1, per_page: 25, total: 100 };
+        let p: Paginated<()> = Paginated {
+            items: vec![],
+            page: 1,
+            per_page: 25,
+            total: 100,
+        };
         assert_eq!(p.page_numbers().len(), 4);
     }
 
     #[test]
     fn page_numbers_large() {
-        let p: Paginated<()> = Paginated { items: vec![], page: 5, per_page: 25, total: 500 };
+        let p: Paginated<()> = Paginated {
+            items: vec![],
+            page: 5,
+            per_page: 25,
+            total: 500,
+        };
         let nums = p.page_numbers();
         assert!(nums.len() <= 9);
     }

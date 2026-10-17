@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
 };
 use serde::Deserialize;
 
@@ -13,7 +13,7 @@ use crate::auth::middleware::require_roles;
 use crate::auth::password;
 use crate::error::AppError;
 use crate::models::user::{CurrentUser, Role};
-use crate::pagination::{PageItem, Paginated, DEFAULT_PER_PAGE};
+use crate::pagination::{DEFAULT_PER_PAGE, PageItem, Paginated};
 use crate::state::AppState;
 use crate::util;
 
@@ -52,7 +52,9 @@ async fn users_set_password(
     }
     // Force re-login on the target's other devices.
     crate::auth::session::delete_all_sessions_for(&state.pool, form.user_id).await?;
-    Ok(ok_redirect("Password updated; that user must sign in again"))
+    Ok(ok_redirect(
+        "Password updated; that user must sign in again",
+    ))
 }
 
 fn today() -> String {
@@ -104,19 +106,21 @@ fn is_unique_violation(e: &sqlx::Error) -> bool {
 pub fn validate_new_user(email: &str, full_name: &str, role_raw: &str) -> Result<Role, AppError> {
     let email = email.trim();
     if email.is_empty() || !email.contains('@') {
-        return Err(AppError::BadRequest(
-            "Email must contain @".to_string(),
-        ));
+        return Err(AppError::BadRequest("Email must contain @".to_string()));
     }
     if full_name.trim().is_empty() {
         return Err(AppError::BadRequest("Full name is required".to_string()));
     }
-    let role = role_raw.trim().parse::<Role>().map_err(AppError::BadRequest)?;
+    let role = role_raw
+        .trim()
+        .parse::<Role>()
+        .map_err(AppError::BadRequest)?;
     // Parent/student logins must be created from the student's profile (which
     // links them to a student), not here, or they land on an empty portal.
     if matches!(role, Role::Parent | Role::Student) {
         return Err(AppError::BadRequest(
-            "Create parent/student logins from the student's profile, not the users page".to_string(),
+            "Create parent/student logins from the student's profile, not the users page"
+                .to_string(),
         ));
     }
     Ok(role)
@@ -157,10 +161,9 @@ struct UserListRow {
 
 async fn list_users(pool: &sqlx::PgPool, page: i64) -> Result<Paginated<UserListRow>, AppError> {
     let per_page = DEFAULT_PER_PAGE;
-    let total: i64 =
-        sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM users")
-            .fetch_one(pool)
-            .await?;
+    let total: i64 = sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM users")
+        .fetch_one(pool)
+        .await?;
     let offset = (page - 1) * per_page;
     let rows = sqlx::query_as::<_, UserListRow>(
         "SELECT id, email, full_name, role, active,
@@ -171,7 +174,12 @@ async fn list_users(pool: &sqlx::PgPool, page: i64) -> Result<Paginated<UserList
     .bind(offset)
     .fetch_all(pool)
     .await?;
-    Ok(Paginated { items: rows, page, per_page, total })
+    Ok(Paginated {
+        items: rows,
+        page,
+        per_page,
+        total,
+    })
 }
 
 #[derive(Debug, sqlx::FromRow)]
@@ -303,7 +311,9 @@ async fn users_toggle_active(
         return Ok(fail_redirect("You cannot deactivate your own account"));
     }
     if would_remove_last_admin(&state.pool, id).await? {
-        return Ok(fail_redirect("Cannot deactivate the last active administrator"));
+        return Ok(fail_redirect(
+            "Cannot deactivate the last active administrator",
+        ));
     }
     let done = sqlx::query("UPDATE users SET active = NOT active WHERE id = $1")
         .bind(id)

@@ -84,13 +84,14 @@ where
 }
 
 fn opt_nonempty(v: Option<&String>) -> Option<String> {
-    v.map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
+    v.map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
 }
 
 #[derive(Clone, Debug)]
 pub enum StorageBackend {
-    Local { root: PathBuf },
+    Local {
+        root: PathBuf,
+    },
     S3 {
         endpoint: String,
         bucket: String,
@@ -166,7 +167,9 @@ pub async fn store_bytes(
 
     let url = match backend {
         StorageBackend::Local { .. } => format!("/uploads/{}", key),
-        StorageBackend::S3 { public_base_url, .. } => match public_base_url {
+        StorageBackend::S3 {
+            public_base_url, ..
+        } => match public_base_url {
             Some(base) => format!("{}/{}", base.trim_end_matches('/'), key),
             None => format!("/uploads/{}", key),
         },
@@ -202,12 +205,18 @@ mod tests {
     #[test]
     fn config_honors_values() {
         let vars = HashMap::from([
-            ("S3_ENDPOINT".to_string(), "https://s3.example.com".to_string()),
+            (
+                "S3_ENDPOINT".to_string(),
+                "https://s3.example.com".to_string(),
+            ),
             ("S3_BUCKET".to_string(), "bucket".to_string()),
             ("S3_REGION".to_string(), "eu-west-1".to_string()),
             ("S3_ACCESS_KEY".to_string(), "AK".to_string()),
             ("S3_SECRET_KEY".to_string(), "SK".to_string()),
-            ("S3_PUBLIC_BASE_URL".to_string(), "https://cdn.example.com".to_string()),
+            (
+                "S3_PUBLIC_BASE_URL".to_string(),
+                "https://cdn.example.com".to_string(),
+            ),
         ]);
         let cfg = storage_config_from(&vars);
         assert_eq!(cfg.region, "eu-west-1");
@@ -215,7 +224,10 @@ mod tests {
         assert_eq!(cfg.secret_key, "SK");
         assert_eq!(cfg.endpoint.as_deref(), Some("https://s3.example.com"));
         assert_eq!(cfg.bucket.as_deref(), Some("bucket"));
-        assert_eq!(cfg.public_base_url.as_deref(), Some("https://cdn.example.com"));
+        assert_eq!(
+            cfg.public_base_url.as_deref(),
+            Some("https://cdn.example.com")
+        );
     }
 
     #[test]
@@ -245,7 +257,9 @@ mod tests {
             .unwrap();
         assert_eq!(obj.key, key);
         assert_eq!(obj.url, "/uploads/test/unit-storage.txt");
-        let data = tokio::fs::read("uploads/test/unit-storage.txt").await.unwrap();
+        let data = tokio::fs::read("uploads/test/unit-storage.txt")
+            .await
+            .unwrap();
         assert_eq!(data, b"hello");
         let _ = tokio::fs::remove_file("uploads/test/unit-storage.txt").await;
         let _ = tokio::fs::remove_dir("uploads/test").await;

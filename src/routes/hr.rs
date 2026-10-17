@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
 };
 use chrono::NaiveDate;
 use serde::Deserialize;
@@ -13,7 +13,7 @@ use serde::Deserialize;
 use crate::auth::middleware::require_roles;
 use crate::error::AppError;
 use crate::models::hr as hr_model;
-use crate::models::staff::{list_staff, StaffView};
+use crate::models::staff::{StaffView, list_staff};
 use crate::models::user::{CurrentUser, Role};
 use crate::state::AppState;
 use crate::util;
@@ -75,7 +75,8 @@ fn ok_redirect(form_path: &str, msg: &str) -> Response {
 }
 
 fn validate_date(s: &str) -> Result<NaiveDate, String> {
-    NaiveDate::parse_from_str(s.trim(), "%Y-%m-%d").map_err(|_| "Date must be YYYY-MM-DD".to_string())
+    NaiveDate::parse_from_str(s.trim(), "%Y-%m-%d")
+        .map_err(|_| "Date must be YYYY-MM-DD".to_string())
 }
 
 fn parse_money_cents(raw: &str) -> Result<i64, String> {
@@ -100,10 +101,11 @@ fn parse_money_cents(raw: &str) -> Result<i64, String> {
         None => 0,
         Some(f) => match f.len() {
             0 => 0,
-            1 => f
-                .parse::<i64>()
-                .map_err(|_| "Amount is not a number".to_string())?
-                * 10,
+            1 => {
+                f.parse::<i64>()
+                    .map_err(|_| "Amount is not a number".to_string())?
+                    * 10
+            }
             2 => f
                 .parse::<i64>()
                 .map_err(|_| "Amount is not a number".to_string())?,
@@ -176,14 +178,21 @@ async fn hr_list(
     require_roles(&user, &[Role::Admin, Role::Staff])?;
     let (user_name, user_initial) = user_ctx(&user);
     let (flash, flash_kind) = flash_ctx(&params);
-    let month = params.get("month").cloned().filter(|s| !s.trim().is_empty()).unwrap_or_else(current_month);
+    let month = params
+        .get("month")
+        .cloned()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(current_month);
     let selected_staff_id = params
         .get("staff_id")
         .and_then(|s| s.trim().parse::<i64>().ok());
 
     let staff_rows = list_staff(&state.pool).await?;
     let staff_views: Vec<StaffView> = staff_rows.iter().cloned().map(StaffView::from).collect();
-    let name_map: HashMap<i64, String> = staff_rows.iter().map(|s| (s.id, format!("{} {}", s.first_name, s.last_name))).collect();
+    let name_map: HashMap<i64, String> = staff_rows
+        .iter()
+        .map(|s| (s.id, format!("{} {}", s.first_name, s.last_name)))
+        .collect();
 
     let attendance = if let Some(sid) = selected_staff_id {
         hr_model::list_attendance(&state.pool, sid, month.as_str())
@@ -205,7 +214,10 @@ async fn hr_list(
         .into_iter()
         .map(|r| LeaveView {
             id: r.id,
-            staff_name: name_map.get(&r.staff_id).cloned().unwrap_or_else(|| format!("#{}", r.staff_id)),
+            staff_name: name_map
+                .get(&r.staff_id)
+                .cloned()
+                .unwrap_or_else(|| format!("#{}", r.staff_id)),
             leave_type: r.leave_type,
             start_date: r.start_date.format("%Y-%m-%d").to_string(),
             end_date: r.end_date.format("%Y-%m-%d").to_string(),
@@ -219,24 +231,31 @@ async fn hr_list(
         .into_iter()
         .map(|r| PayrollView {
             id: r.id,
-            staff_name: name_map.get(&r.staff_id).cloned().unwrap_or_else(|| format!("#{}", r.staff_id)),
+            staff_name: name_map
+                .get(&r.staff_id)
+                .cloned()
+                .unwrap_or_else(|| format!("#{}", r.staff_id)),
             period_label: r.period_label,
             base: util::format_cents(r.base_cents),
             allowance: util::format_cents(r.allowance_cents),
             deduction: util::format_cents(r.deduction_cents),
             net: util::format_cents(r.net_cents),
-            paid_on: r.paid_on.map(|d| d.format("%Y-%m-%d").to_string()).unwrap_or_default(),
+            paid_on: r
+                .paid_on
+                .map(|d| d.format("%Y-%m-%d").to_string())
+                .unwrap_or_default(),
         })
         .collect();
 
-    let (summary_present, summary_absent, summary_leave, summary_late) = if let Some(sid) = selected_staff_id {
-        match hr_model::monthly_summary_for_staff(&state.pool, sid, month.as_str()).await {
-            Ok(s) => (s.present, s.absent, s.leave, s.late),
-            Err(_) => (0, 0, 0, 0),
-        }
-    } else {
-        (0, 0, 0, 0)
-    };
+    let (summary_present, summary_absent, summary_leave, summary_late) =
+        if let Some(sid) = selected_staff_id {
+            match hr_model::monthly_summary_for_staff(&state.pool, sid, month.as_str()).await {
+                Ok(s) => (s.present, s.absent, s.leave, s.late),
+                Err(_) => (0, 0, 0, 0),
+            }
+        } else {
+            (0, 0, 0, 0)
+        };
 
     let can_mutate = user.has_role(&[Role::Admin, Role::Staff]);
 
@@ -290,14 +309,36 @@ async fn hr_attendance(
         Ok(d) => d,
         Err(msg) => {
             let m = current_month();
-            return Ok(fail_redirect(&format!("/hr?staff_id={staff_id}&month={m}"), &msg));
+            return Ok(fail_redirect(
+                &format!("/hr?staff_id={staff_id}&month={m}"),
+                &msg,
+            ));
         }
     };
     let month = date.format("%Y-%m").to_string();
-    let note = if form.note.trim().is_empty() { None } else { Some(form.note.as_str()) };
-    match hr_model::upsert_attendance(&state.pool, staff_id, date, form.status.trim(), note, Some(user.id)).await {
-        Ok(_) => Ok(ok_redirect(&format!("/hr?staff_id={staff_id}&month={month}"), "Attendance saved")),
-        Err(AppError::BadRequest(msg)) => Ok(fail_redirect(&format!("/hr?staff_id={staff_id}&month={month}"), &msg)),
+    let note = if form.note.trim().is_empty() {
+        None
+    } else {
+        Some(form.note.as_str())
+    };
+    match hr_model::upsert_attendance(
+        &state.pool,
+        staff_id,
+        date,
+        form.status.trim(),
+        note,
+        Some(user.id),
+    )
+    .await
+    {
+        Ok(_) => Ok(ok_redirect(
+            &format!("/hr?staff_id={staff_id}&month={month}"),
+            "Attendance saved",
+        )),
+        Err(AppError::BadRequest(msg)) => Ok(fail_redirect(
+            &format!("/hr?staff_id={staff_id}&month={month}"),
+            &msg,
+        )),
         Err(e) => Err(e),
     }
 }
@@ -334,8 +375,21 @@ async fn hr_leave(
         Ok(d) => d,
         Err(msg) => return Ok(fail_redirect("/hr", &msg)),
     };
-    let reason = if form.reason.trim().is_empty() { None } else { Some(form.reason.as_str()) };
-    match hr_model::create_leave(&state.pool, staff_id, form.leave_type.trim(), start, end, reason).await {
+    let reason = if form.reason.trim().is_empty() {
+        None
+    } else {
+        Some(form.reason.as_str())
+    };
+    match hr_model::create_leave(
+        &state.pool,
+        staff_id,
+        form.leave_type.trim(),
+        start,
+        end,
+        reason,
+    )
+    .await
+    {
         Ok(_) => Ok(ok_redirect("/hr", "Leave request created")),
         Err(AppError::BadRequest(msg)) => Ok(fail_redirect("/hr", &msg)),
         Err(e) => Err(e),
@@ -406,7 +460,16 @@ async fn hr_payroll(
         Ok(v) => v,
         Err(msg) => return Ok(fail_redirect("/hr", &msg)),
     };
-    match hr_model::create_payroll(&state.pool, staff_id, form.period_label.trim(), base, allowance, deduction).await {
+    match hr_model::create_payroll(
+        &state.pool,
+        staff_id,
+        form.period_label.trim(),
+        base,
+        allowance,
+        deduction,
+    )
+    .await
+    {
         Ok(_) => Ok(ok_redirect("/hr", "Payroll recorded")),
         Err(AppError::BadRequest(msg)) => Ok(fail_redirect("/hr", &msg)),
         Err(e) => Err(e),
@@ -455,7 +518,11 @@ async fn hr_my(
     let month = current_month();
     let staff_row = hr_model::find_staff_row_for_user(&state.pool, &user.email).await?;
     let (staff_name, has_staff, staff_id) = match staff_row {
-        Some(r) => (format!("{} {}", r.first_name, r.last_name), true, Some(r.id)),
+        Some(r) => (
+            format!("{} {}", r.first_name, r.last_name),
+            true,
+            Some(r.id),
+        ),
         None => (user.full_name.clone(), false, None),
     };
 
@@ -499,7 +566,10 @@ async fn hr_my(
                 allowance: util::format_cents(r.allowance_cents),
                 deduction: util::format_cents(r.deduction_cents),
                 net: util::format_cents(r.net_cents),
-                paid_on: r.paid_on.map(|d| d.format("%Y-%m-%d").to_string()).unwrap_or_default(),
+                paid_on: r
+                    .paid_on
+                    .map(|d| d.format("%Y-%m-%d").to_string())
+                    .unwrap_or_default(),
             })
             .collect();
         if let Ok(s) = hr_model::monthly_summary_for_staff(&state.pool, sid, month.as_str()).await {

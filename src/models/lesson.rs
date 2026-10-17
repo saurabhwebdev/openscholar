@@ -98,7 +98,10 @@ pub async fn list_for_student(pool: &PgPool, student_id: i64) -> Result<Vec<Less
     Ok(rows)
 }
 
-pub async fn lessons_for_student(pool: &PgPool, student_id: i64) -> Result<Vec<LessonRow>, AppError> {
+pub async fn lessons_for_student(
+    pool: &PgPool,
+    student_id: i64,
+) -> Result<Vec<LessonRow>, AppError> {
     list_for_student(pool, student_id).await
 }
 
@@ -165,7 +168,11 @@ pub async fn insert_lesson(pool: &PgPool, input: &LessonInput) -> Result<LessonR
     create_lesson(pool, input).await
 }
 
-pub async fn update_lesson(pool: &PgPool, id: i64, input: &LessonInput) -> Result<LessonRow, AppError> {
+pub async fn update_lesson(
+    pool: &PgPool,
+    id: i64,
+    input: &LessonInput,
+) -> Result<LessonRow, AppError> {
     let row = sqlx::query_as::<_, LessonRow>(
         "UPDATE lessons SET class_id=$2, subject_id=$3, teacher_id=$4, date=$5, title=$6, body=$7, homework=$8
          WHERE id=$1
@@ -214,7 +221,10 @@ pub async fn list_materials(pool: &PgPool, lesson_id: i64) -> Result<Vec<Materia
     Ok(rows)
 }
 
-pub async fn materials_for_lesson(pool: &PgPool, lesson_id: i64) -> Result<Vec<MaterialRow>, AppError> {
+pub async fn materials_for_lesson(
+    pool: &PgPool,
+    lesson_id: i64,
+) -> Result<Vec<MaterialRow>, AppError> {
     list_materials(pool, lesson_id).await
 }
 

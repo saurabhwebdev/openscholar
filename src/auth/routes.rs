@@ -3,20 +3,20 @@ use std::net::SocketAddr;
 
 use askama::Template;
 use axum::{
+    Router,
     extract::{ConnectInfo, Extension, Form, Query, State},
     http::{
-        header::{COOKIE, SET_COOKIE},
         HeaderMap, HeaderValue,
+        header::{COOKIE, SET_COOKIE},
     },
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
 };
 use serde::Deserialize;
 
 use crate::auth::{password, session};
 use crate::error::AppError;
-use crate::models::user::{find_user_by_email, CurrentUser};
+use crate::models::user::{CurrentUser, find_user_by_email};
 use crate::state::AppState;
 use crate::util;
 
@@ -105,7 +105,10 @@ async fn login_page(Query(params): Query<HashMap<String, String>>) -> impl IntoR
             .unwrap_or_else(|| "info".to_string()),
         next: sanitize_next(params.get("next").map(String::as_str)),
     };
-    template.render().map(axum::response::Html).map_err(AppError::from)
+    template
+        .render()
+        .map(axum::response::Html)
+        .map_err(AppError::from)
 }
 
 #[derive(Debug, Deserialize)]
@@ -176,8 +179,11 @@ async fn login_submit(
     let mut headers = HeaderMap::new();
     headers.insert(
         SET_COOKIE,
-        HeaderValue::from_str(&session::set_cookie_header(session_id, state.config.cookie_secure))
-            .map_err(|e| AppError::Internal(e.to_string()))?,
+        HeaderValue::from_str(&session::set_cookie_header(
+            session_id,
+            state.config.cookie_secure,
+        ))
+        .map_err(|e| AppError::Internal(e.to_string()))?,
     );
     // Double-submit CSRF token cookie (read by the page script into forms).
     headers.append(
@@ -191,10 +197,7 @@ async fn login_submit(
     Ok((headers, Redirect::to(&target)).into_response())
 }
 
-async fn logout(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-) -> Result<Response, AppError> {
+async fn logout(State(state): State<AppState>, headers: HeaderMap) -> Result<Response, AppError> {
     if let Some(id) = headers
         .get(COOKIE)
         .and_then(|v| v.to_str().ok())
@@ -210,8 +213,10 @@ async fn logout(
     );
     out.append(
         SET_COOKIE,
-        HeaderValue::from_str(&session::clear_csrf_cookie_header(state.config.cookie_secure))
-            .map_err(|e| AppError::Internal(e.to_string()))?,
+        HeaderValue::from_str(&session::clear_csrf_cookie_header(
+            state.config.cookie_secure,
+        ))
+        .map_err(|e| AppError::Internal(e.to_string()))?,
     );
     Ok((out, Redirect::to("/login")).into_response())
 }

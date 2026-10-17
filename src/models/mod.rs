@@ -1,9 +1,9 @@
-pub mod admission;
 pub mod activity;
+pub mod admission;
 pub mod analytics;
 pub mod attachment;
-pub mod audit;
 pub mod attendance;
+pub mod audit;
 pub mod bulletin;
 pub mod class;
 pub mod fees;

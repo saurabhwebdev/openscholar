@@ -2,26 +2,25 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
 };
 use chrono::NaiveDate;
 use serde::Deserialize;
 
 use crate::auth::middleware::require_roles;
 use crate::error::AppError;
+use crate::models::audit as audit_model;
 use crate::models::hr as hr_model;
 use crate::models::staff::{
-    classes_for_teacher, count_staff, count_search_staff,
-    create_staff, find_linked_user, find_staff,
-    list_staff_paged, search_staff_paged,
-    update_staff, validate_staff, StaffInput, StaffView,
+    StaffInput, StaffView, classes_for_teacher, count_search_staff, count_staff, create_staff,
+    find_linked_user, find_staff, list_staff_paged, search_staff_paged, update_staff,
+    validate_staff,
 };
-use crate::models::audit as audit_model;
 use crate::models::user::{CurrentUser, Role};
-use crate::pagination::{PageItem, Paginated, DEFAULT_PER_PAGE};
+use crate::pagination::{DEFAULT_PER_PAGE, PageItem, Paginated};
 use crate::state::AppState;
 use crate::util;
 
@@ -159,7 +158,11 @@ async fn staff_list(
         .get("q")
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty());
-    let page: i64 = params.get("page").and_then(|p| p.parse().ok()).unwrap_or(1).max(1);
+    let page: i64 = params
+        .get("page")
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(1)
+        .max(1);
     let per_page = DEFAULT_PER_PAGE;
     let offset = (page - 1) * per_page;
     let (total, rows) = match &q {
@@ -174,7 +177,12 @@ async fn staff_list(
             (total, rows)
         }
     };
-    let paginated: Paginated<()> = Paginated { items: vec![], page, per_page, total };
+    let paginated: Paginated<()> = Paginated {
+        items: vec![],
+        page,
+        per_page,
+        total,
+    };
     let base_url = match &q {
         Some(term) => format!("/staff?q={}&", util::url_encode(term)),
         None => "/staff?".to_string(),
@@ -278,8 +286,12 @@ async fn staff_create(
     Form(form): Form<StaffForm>,
 ) -> Result<Response, AppError> {
     require_roles(&user, &[Role::Admin, Role::Staff])?;
-    if let Err(e) = validate_staff(&form.first_name, &form.last_name, &form.employee_no, &form.status)
-    {
+    if let Err(e) = validate_staff(
+        &form.first_name,
+        &form.last_name,
+        &form.employee_no,
+        &form.status,
+    ) {
         return Ok(fail_redirect("/staff/new", &e.to_string()));
     }
     let hired_on = match parse_hired_on(&form.hired_on) {
@@ -289,7 +301,16 @@ async fn staff_create(
     let input = form_to_input(&form, hired_on);
     match create_staff(&state.pool, &input).await {
         Ok(row) => {
-            if let Err(e) = audit_model::log_action(&state.pool, Some(user.id), "create", "staff", Some(row.id), Some("staff created")).await {
+            if let Err(e) = audit_model::log_action(
+                &state.pool,
+                Some(user.id),
+                "create",
+                "staff",
+                Some(row.id),
+                Some("staff created"),
+            )
+            .await
+            {
                 tracing::warn!(error = %e, "audit log failed");
             }
             Ok(Redirect::to(&format!("/staff/{}", row.id)).into_response())
@@ -353,9 +374,7 @@ async fn staff_detail(
         .ok_or(AppError::NotFound)?;
     let class_rows = classes_for_teacher(&state.pool, id).await?;
     let linked_row = match &row.email {
-        Some(email) if !email.trim().is_empty() => {
-            find_linked_user(&state.pool, email).await?
-        }
+        Some(email) if !email.trim().is_empty() => find_linked_user(&state.pool, email).await?,
         _ => None,
     };
     // HR card data
@@ -364,12 +383,25 @@ async fn staff_detail(
         .await
         .unwrap_or_default();
     let present = att_rows.iter().filter(|r| r.status == "present").count();
-    let hr_attendance = format!("{} present of {} recorded this month", present, att_rows.len());
-    let leave_rows = hr_model::list_leaves_for_staff(&state.pool, id).await.unwrap_or_default();
+    let hr_attendance = format!(
+        "{} present of {} recorded this month",
+        present,
+        att_rows.len()
+    );
+    let leave_rows = hr_model::list_leaves_for_staff(&state.pool, id)
+        .await
+        .unwrap_or_default();
     let pending = leave_rows.iter().filter(|r| r.status == "pending").count();
     let approved = leave_rows.iter().filter(|r| r.status == "approved").count();
-    let hr_leave = format!("{} pending, {} approved ({} total)", pending, approved, leave_rows.len());
-    let payroll_rows = hr_model::list_payroll_for_staff(&state.pool, id).await.unwrap_or_default();
+    let hr_leave = format!(
+        "{} pending, {} approved ({} total)",
+        pending,
+        approved,
+        leave_rows.len()
+    );
+    let payroll_rows = hr_model::list_payroll_for_staff(&state.pool, id)
+        .await
+        .unwrap_or_default();
     let hr_payroll = match payroll_rows.first() {
         Some(p) => format!("{} — {}", p.period_label, util::format_cents(p.net_cents)),
         None => "—".to_string(),
@@ -451,8 +483,12 @@ async fn staff_update(
 ) -> Result<Response, AppError> {
     require_roles(&user, &[Role::Admin, Role::Staff])?;
     let edit_path = format!("/staff/{id}/edit");
-    if let Err(e) = validate_staff(&form.first_name, &form.last_name, &form.employee_no, &form.status)
-    {
+    if let Err(e) = validate_staff(
+        &form.first_name,
+        &form.last_name,
+        &form.employee_no,
+        &form.status,
+    ) {
         return Ok(fail_redirect(&edit_path, &e.to_string()));
     }
     let hired_on = match parse_hired_on(&form.hired_on) {
@@ -462,16 +498,24 @@ async fn staff_update(
     let input = form_to_input(&form, hired_on);
     match update_staff(&state.pool, id, &input).await {
         Ok(Some(row)) => {
-            if let Err(e) = audit_model::log_action(&state.pool, Some(user.id), "update", "staff", Some(row.id), Some("staff updated")).await {
+            if let Err(e) = audit_model::log_action(
+                &state.pool,
+                Some(user.id),
+                "update",
+                "staff",
+                Some(row.id),
+                Some("staff updated"),
+            )
+            .await
+            {
                 tracing::warn!(error = %e, "audit log failed");
             }
             Ok(Redirect::to(&format!("/staff/{}", row.id)).into_response())
         }
         Ok(None) => Err(AppError::NotFound),
-        Err(AppError::Db(e)) if is_unique_violation(&e) => Ok(fail_redirect(
-            &edit_path,
-            "Employee number already exists",
-        )),
+        Err(AppError::Db(e)) if is_unique_violation(&e) => {
+            Ok(fail_redirect(&edit_path, "Employee number already exists"))
+        }
         Err(e) => Err(e),
     }
 }
@@ -527,7 +571,16 @@ async fn staff_delete(
     if done.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
-    if let Err(e) = audit_model::log_action(&state.pool, Some(user.id), "delete", "staff", Some(id), Some("staff deleted")).await {
+    if let Err(e) = audit_model::log_action(
+        &state.pool,
+        Some(user.id),
+        "delete",
+        "staff",
+        Some(id),
+        Some("staff deleted"),
+    )
+    .await
+    {
         tracing::warn!(error = %e, "audit log failed");
     }
     Ok(Redirect::to(&delete_success_target()).into_response())

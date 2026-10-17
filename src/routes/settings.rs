@@ -1,9 +1,9 @@
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
 };
 use chrono::NaiveDate;
 use serde::Deserialize;
@@ -23,7 +23,10 @@ pub fn router() -> Router<AppState> {
         .route("/settings/scales", post(scale_create))
         .route("/settings/scales/{id}/delete", post(scale_delete))
         .route("/settings/semesters", post(semester_create))
-        .route("/settings/semesters/{id}/set-current", post(semester_set_current))
+        .route(
+            "/settings/semesters/{id}/set-current",
+            post(semester_set_current),
+        )
         .route("/settings/semesters/{id}/delete", post(semester_delete))
         .route("/settings/raw", post(raw_submit))
         .route("/settings/password", post(password_submit))
@@ -49,7 +52,9 @@ async fn password_submit(
         .await?
         .ok_or(AppError::NotFound)?;
     if crate::auth::password::verify_password(&form.current_password, &current_hash).is_err() {
-        return Ok(flash_redirect("/settings", "Current password is incorrect", "error").into_response());
+        return Ok(
+            flash_redirect("/settings", "Current password is incorrect", "error").into_response(),
+        );
     }
     let new_hash = match crate::auth::password::hash_password(&form.new_password) {
         Ok(h) => h,
@@ -59,7 +64,7 @@ async fn password_submit(
                 "New password must be at least 8 characters",
                 "error",
             )
-            .into_response())
+            .into_response());
         }
     };
     crate::models::user::update_password(&state.pool, user.id, &new_hash).await?;
@@ -285,11 +290,21 @@ async fn scale_create(
     check_admin(&user)?;
     let min: f64 = match form.min_score.trim().parse() {
         Ok(v) => v,
-        Err(_) => return Ok(flash_redirect("/settings", "Minimum score must be a number", "error").into_response()),
+        Err(_) => {
+            return Ok(
+                flash_redirect("/settings", "Minimum score must be a number", "error")
+                    .into_response(),
+            );
+        }
     };
     let max: f64 = match form.max_score.trim().parse() {
         Ok(v) => v,
-        Err(_) => return Ok(flash_redirect("/settings", "Maximum score must be a number", "error").into_response()),
+        Err(_) => {
+            return Ok(
+                flash_redirect("/settings", "Maximum score must be a number", "error")
+                    .into_response(),
+            );
+        }
     };
     if let Err(msg) = settings_model::validate_scale(&form.name, min, max, &form.grade) {
         return Ok(flash_redirect("/settings", &msg, "error").into_response());
@@ -302,7 +317,16 @@ async fn scale_create(
         .map(|s| s.parse::<f64>())
         .transpose()
         .map_err(|_| AppError::BadRequest("Points must be a number".to_string()))?;
-    match settings_model::create_scale(&state.pool, form.name.trim(), min, max, form.grade.trim(), points).await {
+    match settings_model::create_scale(
+        &state.pool,
+        form.name.trim(),
+        min,
+        max,
+        form.grade.trim(),
+        points,
+    )
+    .await
+    {
         Ok(_) => Ok(flash_redirect("/settings", "Grading scale added", "ok").into_response()),
         Err(e) => {
             let (msg, kind) = db_flash(e);
@@ -319,7 +343,9 @@ async fn scale_delete(
     check_admin(&user)?;
     match settings_model::delete_scale(&state.pool, id).await {
         Ok(()) => Ok(flash_redirect("/settings", "Grading scale deleted", "ok").into_response()),
-        Err(AppError::NotFound) => Ok(flash_redirect("/settings", "Not found", "error").into_response()),
+        Err(AppError::NotFound) => {
+            Ok(flash_redirect("/settings", "Not found", "error").into_response())
+        }
         Err(e) => Err(e),
     }
 }
@@ -341,15 +367,28 @@ async fn semester_create(
     check_admin(&user)?;
     let year_id: i64 = match form.school_year_id.trim().parse() {
         Ok(v) => v,
-        Err(_) => return Ok(flash_redirect("/settings", "School year is required", "error").into_response()),
+        Err(_) => {
+            return Ok(
+                flash_redirect("/settings", "School year is required", "error").into_response(),
+            );
+        }
     };
     let start = match NaiveDate::parse_from_str(form.start_date.trim(), "%Y-%m-%d") {
         Ok(d) => d,
-        Err(_) => return Ok(flash_redirect("/settings", "Start date must be YYYY-MM-DD", "error").into_response()),
+        Err(_) => {
+            return Ok(
+                flash_redirect("/settings", "Start date must be YYYY-MM-DD", "error")
+                    .into_response(),
+            );
+        }
     };
     let end = match NaiveDate::parse_from_str(form.end_date.trim(), "%Y-%m-%d") {
         Ok(d) => d,
-        Err(_) => return Ok(flash_redirect("/settings", "End date must be YYYY-MM-DD", "error").into_response()),
+        Err(_) => {
+            return Ok(
+                flash_redirect("/settings", "End date must be YYYY-MM-DD", "error").into_response(),
+            );
+        }
     };
     if let Err(msg) = settings_model::validate_semester(&form.name, start, end) {
         return Ok(flash_redirect("/settings", &msg, "error").into_response());
@@ -365,9 +404,12 @@ async fn semester_create(
             .into_response());
         }
     }
-    match settings_model::create_semester(&state.pool, year_id, form.name.trim(), start, end).await {
+    match settings_model::create_semester(&state.pool, year_id, form.name.trim(), start, end).await
+    {
         Ok(row) => {
-            if form.is_current.as_deref() == Some("on") || form.is_current.as_deref() == Some("true") {
+            if form.is_current.as_deref() == Some("on")
+                || form.is_current.as_deref() == Some("true")
+            {
                 // Propagate a set-current failure instead of silently swallowing it.
                 if let Err(e) = settings_model::set_current_semester(&state.pool, row.id).await {
                     let (msg, kind) = db_flash(e);
@@ -391,7 +433,9 @@ async fn semester_set_current(
     check_admin(&user)?;
     match settings_model::set_current_semester(&state.pool, id).await {
         Ok(()) => Ok(flash_redirect("/settings", "Current semester updated", "ok").into_response()),
-        Err(AppError::NotFound) => Ok(flash_redirect("/settings", "Not found", "error").into_response()),
+        Err(AppError::NotFound) => {
+            Ok(flash_redirect("/settings", "Not found", "error").into_response())
+        }
         Err(e) => Err(e),
     }
 }
@@ -404,7 +448,9 @@ async fn semester_delete(
     check_admin(&user)?;
     match settings_model::delete_semester(&state.pool, id).await {
         Ok(()) => Ok(flash_redirect("/settings", "Semester deleted", "ok").into_response()),
-        Err(AppError::NotFound) => Ok(flash_redirect("/settings", "Not found", "error").into_response()),
+        Err(AppError::NotFound) => {
+            Ok(flash_redirect("/settings", "Not found", "error").into_response())
+        }
         Err(e) => Err(e),
     }
 }

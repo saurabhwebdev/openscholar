@@ -83,8 +83,7 @@ pub fn validate_medical(title: &str, record_type: &str) -> Result<(), String> {
     }
     if !ALLOWED_MEDICAL_TYPES.contains(&record_type.trim()) {
         return Err(
-            "Record type must be immunization, allergy, medication, condition, or note"
-                .to_string(),
+            "Record type must be immunization, allergy, medication, condition, or note".to_string(),
         );
     }
     Ok(())
@@ -135,7 +134,10 @@ pub async fn list_incidents_for_student(
     list_incidents(pool, student_id).await
 }
 
-pub async fn create_incident(pool: &PgPool, input: &IncidentInput) -> Result<IncidentRow, AppError> {
+pub async fn create_incident(
+    pool: &PgPool,
+    input: &IncidentInput,
+) -> Result<IncidentRow, AppError> {
     if let Err(msg) = validate_incident(&input.description, &input.kind) {
         return Err(AppError::BadRequest(msg));
     }
@@ -314,10 +316,7 @@ pub async fn incident_summary(pool: &PgPool, student_id: i64) -> Result<Incident
     Ok(summary)
 }
 
-pub async fn incident_counts(
-    pool: &PgPool,
-    student_id: i64,
-) -> Result<(i64, i64, i64), AppError> {
+pub async fn incident_counts(pool: &PgPool, student_id: i64) -> Result<(i64, i64, i64), AppError> {
     let s = incident_summary(pool, student_id).await?;
     Ok((s.minor, s.major, s.positive))
 }

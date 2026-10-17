@@ -1,9 +1,9 @@
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
 };
 use chrono::NaiveDate;
 use serde::Deserialize;
@@ -11,10 +11,8 @@ use std::collections::HashMap;
 
 use crate::auth::middleware::require_roles;
 use crate::error::AppError;
-use crate::models::library::{
-    self as lib, BookInput, BookRow, LoanView,
-};
-use crate::models::student::{list_students, StudentRow};
+use crate::models::library::{self as lib, BookInput, BookRow, LoanView};
+use crate::models::student::{StudentRow, list_students};
 use crate::models::user::{CurrentUser, Role};
 use crate::state::AppState;
 use crate::util;
@@ -215,7 +213,15 @@ async fn borrow_book(
     if let Err(msg) = lib::validate_loan(borrowed_on, due_on) {
         return Ok(back_to("/library", &msg).into_response());
     }
-    match lib::borrow_on(&state.pool, form.book_id, form.student_id, borrowed_on, due_on).await {
+    match lib::borrow_on(
+        &state.pool,
+        form.book_id,
+        form.student_id,
+        borrowed_on,
+        due_on,
+    )
+    .await
+    {
         Ok(_) => Ok(Redirect::to("/library?flash=Borrowed&flash_kind=ok").into_response()),
         Err(AppError::BadRequest(msg)) => Ok(back_to("/library", &msg).into_response()),
         Err(e) => Err(e),

@@ -11,10 +11,10 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Path, Query, State},
     response::{Html, IntoResponse},
     routing::get,
-    Router,
 };
 use chrono::NaiveDate;
 
@@ -104,16 +104,13 @@ pub fn fmt_num(v: f64) -> String {
 }
 
 pub fn fmt_pct(v: Option<f64>) -> String {
-    v.map(|p| format!("{p:.1}%")).unwrap_or_else(|| "—".to_string())
+    v.map(|p| format!("{p:.1}%"))
+        .unwrap_or_else(|| "—".to_string())
 }
 
 /// Pure scoping core: staff roles always pass; parents need a `parent_links`
 /// row; students need to own the `students` row. Mirrors `portal::can_view_child`.
-pub fn can_view_report_pure(
-    role: &Role,
-    is_linked_parent: bool,
-    is_own_student: bool,
-) -> bool {
+pub fn can_view_report_pure(role: &Role, is_linked_parent: bool, is_own_student: bool) -> bool {
     match role {
         Role::Admin | Role::Teacher | Role::Staff => true,
         Role::Parent => is_linked_parent,
@@ -356,7 +353,10 @@ fn line_view(l: &AssessmentLine) -> LineView {
         date: l.date.to_string(),
         score_display: l.score.map(fmt_num).unwrap_or_else(|| "—".to_string()),
         max_display: fmt_num(l.max_score),
-        avg_display: l.avg.map(|v| format!("{v:.1}")).unwrap_or_else(|| "—".to_string()),
+        avg_display: l
+            .avg
+            .map(|v| format!("{v:.1}"))
+            .unwrap_or_else(|| "—".to_string()),
     }
 }
 
@@ -445,7 +445,11 @@ async fn receipt(
     // Don't leak payment-id existence to families: a scope failure looks the
     // same as "no such payment" for non-staff.
     if let Err(e) = check_scope(&user, invoice.student_id, &state.pool).await {
-        return Err(if is_staff(&user) { e } else { AppError::NotFound });
+        return Err(if is_staff(&user) {
+            e
+        } else {
+            AppError::NotFound
+        });
     }
 
     let back_url = if is_staff(&user) {
@@ -755,10 +759,26 @@ mod tests {
         assert!(is_staff(&admin));
         assert!(!is_staff(&parent));
         assert!(!is_staff(&student));
-        assert!(can_view_report_pure(&parent.role.parse().unwrap(), true, false));
-        assert!(!can_view_report_pure(&parent.role.parse().unwrap(), false, false));
-        assert!(can_view_report_pure(&student.role.parse().unwrap(), false, true));
-        assert!(!can_view_report_pure(&student.role.parse().unwrap(), false, false));
+        assert!(can_view_report_pure(
+            &parent.role.parse().unwrap(),
+            true,
+            false
+        ));
+        assert!(!can_view_report_pure(
+            &parent.role.parse().unwrap(),
+            false,
+            false
+        ));
+        assert!(can_view_report_pure(
+            &student.role.parse().unwrap(),
+            false,
+            true
+        ));
+        assert!(!can_view_report_pure(
+            &student.role.parse().unwrap(),
+            false,
+            false
+        ));
         assert!("superadmin".parse::<Role>().is_err());
     }
 }

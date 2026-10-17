@@ -1,9 +1,9 @@
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{IntoResponse, Redirect},
     routing::{get, post},
-    Router,
 };
 use chrono::NaiveDate;
 use serde::Deserialize;
@@ -20,10 +20,7 @@ pub fn router() -> Router<AppState> {
         .route("/classes/new", get(new_class_page))
         .route("/classes/{id}", get(class_detail_page))
         .route("/classes/{id}/enroll", post(enroll_submit))
-        .route(
-            "/classes/{id}/unenroll/{student_id}",
-            post(unenroll_submit),
-        )
+        .route("/classes/{id}/unenroll/{student_id}", post(unenroll_submit))
         .route("/classes/{id}/edit", get(edit_class_page))
         .route("/classes/{id}/update", post(update_class_submit))
         .route("/classes/{id}/delete", post(delete_class_submit))
@@ -230,9 +227,8 @@ async fn create_year_submit(
     Form(form): Form<YearForm>,
 ) -> Result<impl IntoResponse, AppError> {
     check_mutate(&user)?;
-    let start = NaiveDate::parse_from_str(form.start_date.trim(), "%Y-%m-%d").map_err(|_| {
-        AppError::BadRequest("Start date must be YYYY-MM-DD".to_string())
-    })?;
+    let start = NaiveDate::parse_from_str(form.start_date.trim(), "%Y-%m-%d")
+        .map_err(|_| AppError::BadRequest("Start date must be YYYY-MM-DD".to_string()))?;
     let end = NaiveDate::parse_from_str(form.end_date.trim(), "%Y-%m-%d")
         .map_err(|_| AppError::BadRequest("End date must be YYYY-MM-DD".to_string()))?;
     if form.name.trim().is_empty() {
@@ -292,7 +288,9 @@ async fn delete_class_submit(
             "Class deleted",
             "ok",
         )),
-        Err(AppError::BadRequest(msg)) => Ok(flash_redirect(&format!("/classes/{id}"), &msg, "error")),
+        Err(AppError::BadRequest(msg)) => {
+            Ok(flash_redirect(&format!("/classes/{id}"), &msg, "error"))
+        }
         Err(e) => Err(e),
     }
 }
@@ -370,12 +368,9 @@ async fn new_class_page(
                 .or_else(|| years.first().map(|y| y.id))
         });
     if years.is_empty() || selected_year.is_none() {
-        return Ok(flash_redirect(
-            "/classes",
-            "Create a school year first",
-            "error",
-        )
-        .into_response());
+        return Ok(
+            flash_redirect("/classes", "Create a school year first", "error").into_response(),
+        );
     }
     let teachers = class_model::list_teacher_options(&state.pool).await?;
     let (user_name, user_initial) = user_ctx(&user);
@@ -511,7 +506,11 @@ async fn update_class_submit(
     )
     .await
     {
-        Ok(_) => Ok(flash_redirect(&format!("/classes/{id}"), "Class updated", "ok")),
+        Ok(_) => Ok(flash_redirect(
+            &format!("/classes/{id}"),
+            "Class updated",
+            "ok",
+        )),
         Err(AppError::NotFound) => Ok(flash_redirect("/classes", "Not found", "error")),
         Err(e) => {
             let (msg, kind) = db_flash(e);
@@ -599,7 +598,9 @@ async fn enroll_submit(
             "Student enrolled",
             "ok",
         )),
-        Err(AppError::BadRequest(msg)) => Ok(flash_redirect(&format!("/classes/{id}"), &msg, "error")),
+        Err(AppError::BadRequest(msg)) => {
+            Ok(flash_redirect(&format!("/classes/{id}"), &msg, "error"))
+        }
         Err(AppError::NotFound) => Ok(flash_redirect("/classes", "Not found", "error")),
         Err(e) => Err(e),
     }
@@ -654,7 +655,10 @@ mod tests {
             "ok",
         ));
         assert_eq!(status, StatusCode::SEE_OTHER);
-        assert_eq!(loc, "/classes?year=7&flash=School+year+deleted&flash_kind=ok");
+        assert_eq!(
+            loc,
+            "/classes?year=7&flash=School+year+deleted&flash_kind=ok"
+        );
     }
 
     #[test]

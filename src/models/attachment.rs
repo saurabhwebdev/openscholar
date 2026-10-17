@@ -40,11 +40,7 @@ impl From<AttachmentRow> for AttachmentView {
     }
 }
 
-pub fn validate_attachment(
-    entity: &str,
-    filename: &str,
-    size_bytes: i64,
-) -> Result<(), String> {
+pub fn validate_attachment(entity: &str, filename: &str, size_bytes: i64) -> Result<(), String> {
     if entity.trim().is_empty() {
         return Err("Entity is required".to_string());
     }

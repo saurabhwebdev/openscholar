@@ -119,7 +119,10 @@ mod tests {
 
     #[test]
     fn encodes_query_values() {
-        assert_eq!(url_encode("Invalid email or password"), "Invalid+email+or+password");
+        assert_eq!(
+            url_encode("Invalid email or password"),
+            "Invalid+email+or+password"
+        );
         assert_eq!(url_encode("a&b=c?d"), "a%26b%3Dc%3Fd");
         assert_eq!(url_encode("/students?page=1"), "/students%3Fpage%3D1");
         assert_eq!(url_encode("ok-_.~AZ09"), "ok-_.~AZ09");

@@ -114,7 +114,9 @@ pub trait NoteArg {
 
 impl NoteArg for Option<&str> {
     fn to_note(&self) -> Option<String> {
-        self.map(str::trim).filter(|s| !s.is_empty()).map(str::to_string)
+        self.map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
     }
 }
 
@@ -129,7 +131,9 @@ impl NoteArg for Option<String> {
 
 impl NoteArg for Option<&String> {
     fn to_note(&self) -> Option<String> {
-        self.map(|s| s.trim()).filter(|s| !s.is_empty()).map(str::to_string)
+        self.map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
     }
 }
 
@@ -266,11 +270,7 @@ use chrono::Datelike;
 
 fn month_range_ym(y: i32, m: u32) -> Result<(NaiveDate, NaiveDate), String> {
     let first = NaiveDate::from_ymd_opt(y, m, 1).ok_or("Invalid month".to_string())?;
-    let (ny, nm) = if m == 12 {
-        (y + 1, 1u32)
-    } else {
-        (y, m + 1)
-    };
+    let (ny, nm) = if m == 12 { (y + 1, 1u32) } else { (y, m + 1) };
     let last = NaiveDate::from_ymd_opt(ny, nm, 1)
         .ok_or("Invalid month".to_string())?
         .pred_opt()
@@ -463,7 +463,10 @@ where
 }
 
 // Attendance for a single date (upsert shorthand already). Find helpers:
-pub async fn find_attendance(pool: &PgPool, id: i64) -> Result<Option<StaffAttendanceRow>, AppError> {
+pub async fn find_attendance(
+    pool: &PgPool,
+    id: i64,
+) -> Result<Option<StaffAttendanceRow>, AppError> {
     let row = sqlx::query_as::<_, StaffAttendanceRow>(
         "SELECT id, staff_id, date, status, note, recorded_by, created_at \
          FROM staff_attendance WHERE id = $1",
@@ -503,8 +506,12 @@ where
     N: NoteArg,
 {
     let lt = leave_type.trim();
-    validate_leave(lt, &start_date.to_naive_date().map_err(AppError::BadRequest)?, &end_date.to_naive_date().map_err(AppError::BadRequest)?)
-        .map_err(AppError::BadRequest)?;
+    validate_leave(
+        lt,
+        &start_date.to_naive_date().map_err(AppError::BadRequest)?,
+        &end_date.to_naive_date().map_err(AppError::BadRequest)?,
+    )
+    .map_err(AppError::BadRequest)?;
     let s = start_date.to_naive_date().map_err(AppError::BadRequest)?;
     let e = end_date.to_naive_date().map_err(AppError::BadRequest)?;
     let r = reason.to_note();
@@ -534,7 +541,15 @@ where
     D1: ToNaiveDate,
     D2: ToNaiveDate,
 {
-    create_leave(pool, staff_id, leave_type, start_date, end_date, Option::<&str>::None).await
+    create_leave(
+        pool,
+        staff_id,
+        leave_type,
+        start_date,
+        end_date,
+        Option::<&str>::None,
+    )
+    .await
 }
 
 pub async fn create_leave_with_reason<D1, D2, N>(
@@ -672,7 +687,10 @@ pub async fn list_leave_requests(pool: &PgPool) -> Result<Vec<LeaveRequestRow>, 
     list_leaves(pool).await
 }
 
-pub async fn list_leaves_for_staff(pool: &PgPool, staff_id: i64) -> Result<Vec<LeaveRequestRow>, AppError> {
+pub async fn list_leaves_for_staff(
+    pool: &PgPool,
+    staff_id: i64,
+) -> Result<Vec<LeaveRequestRow>, AppError> {
     let rows = sqlx::query_as::<_, LeaveRequestRow>(
         "SELECT id, staff_id, leave_type, start_date, end_date, reason, status, approved_by, created_at \
          FROM leave_requests WHERE staff_id = $1 ORDER BY created_at DESC, id DESC",
@@ -683,7 +701,10 @@ pub async fn list_leaves_for_staff(pool: &PgPool, staff_id: i64) -> Result<Vec<L
     Ok(rows)
 }
 
-pub async fn list_leaves_by_staff(pool: &PgPool, staff_id: i64) -> Result<Vec<LeaveRequestRow>, AppError> {
+pub async fn list_leaves_by_staff(
+    pool: &PgPool,
+    staff_id: i64,
+) -> Result<Vec<LeaveRequestRow>, AppError> {
     list_leaves_for_staff(pool, staff_id).await
 }
 
@@ -748,7 +769,11 @@ where
     update_leave_status(pool, id, status, approved_by).await
 }
 
-pub async fn approve_leave<A>(pool: &PgPool, id: i64, approved_by: A) -> Result<LeaveRequestRow, AppError>
+pub async fn approve_leave<A>(
+    pool: &PgPool,
+    id: i64,
+    approved_by: A,
+) -> Result<LeaveRequestRow, AppError>
 where
     A: ApproverArg,
 {
@@ -759,7 +784,11 @@ pub async fn approve_leave_simple(pool: &PgPool, id: i64) -> Result<LeaveRequest
     approve_leave(pool, id, Option::<i64>::None).await
 }
 
-pub async fn reject_leave<A>(pool: &PgPool, id: i64, approved_by: A) -> Result<LeaveRequestRow, AppError>
+pub async fn reject_leave<A>(
+    pool: &PgPool,
+    id: i64,
+    approved_by: A,
+) -> Result<LeaveRequestRow, AppError>
 where
     A: ApproverArg,
 {
@@ -858,7 +887,15 @@ pub async fn add_payroll(
     allowance_cents: i64,
     deduction_cents: i64,
 ) -> Result<PayrollRow, AppError> {
-    create_payroll(pool, staff_id, period_label, base_cents, allowance_cents, deduction_cents).await
+    create_payroll(
+        pool,
+        staff_id,
+        period_label,
+        base_cents,
+        allowance_cents,
+        deduction_cents,
+    )
+    .await
 }
 
 pub async fn create_payroll_run<P>(
@@ -914,7 +951,10 @@ pub async fn list_payrolls(pool: &PgPool) -> Result<Vec<PayrollRow>, AppError> {
     list_payroll(pool).await
 }
 
-pub async fn list_payroll_for_staff(pool: &PgPool, staff_id: i64) -> Result<Vec<PayrollRow>, AppError> {
+pub async fn list_payroll_for_staff(
+    pool: &PgPool,
+    staff_id: i64,
+) -> Result<Vec<PayrollRow>, AppError> {
     let rows = sqlx::query_as::<_, PayrollRow>(
         "SELECT id, staff_id, period_label, base_cents, allowance_cents, deduction_cents, net_cents, paid_on, created_at \
          FROM payroll_runs WHERE staff_id = $1 ORDER BY created_at DESC, id DESC",
@@ -925,7 +965,10 @@ pub async fn list_payroll_for_staff(pool: &PgPool, staff_id: i64) -> Result<Vec<
     Ok(rows)
 }
 
-pub async fn list_payroll_by_staff(pool: &PgPool, staff_id: i64) -> Result<Vec<PayrollRow>, AppError> {
+pub async fn list_payroll_by_staff(
+    pool: &PgPool,
+    staff_id: i64,
+) -> Result<Vec<PayrollRow>, AppError> {
     list_payroll_for_staff(pool, staff_id).await
 }
 
@@ -948,10 +991,7 @@ pub async fn remove_payroll(pool: &PgPool, id: i64) -> Result<(), AppError> {
 // Monthly summary
 // ---------------------------------------------------------------------------
 
-pub async fn monthly_summary<M>(
-    pool: &PgPool,
-    month: M,
-) -> Result<Vec<MonthlySummary>, AppError>
+pub async fn monthly_summary<M>(pool: &PgPool, month: M) -> Result<Vec<MonthlySummary>, AppError>
 where
     M: MonthInput,
 {
@@ -1018,16 +1058,18 @@ where
 // ---------------------------------------------------------------------------
 
 pub async fn staff_id_for_user(pool: &PgPool, email: &str) -> Result<Option<i64>, AppError> {
-    let id: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM staff WHERE lower(email) = lower($1) LIMIT 1",
-    )
-    .bind(email)
-    .fetch_optional(pool)
-    .await?;
+    let id: Option<i64> =
+        sqlx::query_scalar("SELECT id FROM staff WHERE lower(email) = lower($1) LIMIT 1")
+            .bind(email)
+            .fetch_optional(pool)
+            .await?;
     Ok(id)
 }
 
-pub async fn find_staff_row_for_user(pool: &PgPool, email: &str) -> Result<Option<StaffRow>, AppError> {
+pub async fn find_staff_row_for_user(
+    pool: &PgPool,
+    email: &str,
+) -> Result<Option<StaffRow>, AppError> {
     let row = sqlx::query_as::<_, StaffRow>(
         "SELECT id, employee_no, first_name, last_name, email, phone, job_title, department, hired_on, status \
          FROM staff WHERE lower(email) = lower($1) LIMIT 1",

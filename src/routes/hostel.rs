@@ -2,17 +2,17 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
 };
 use serde::Deserialize;
 
 use crate::auth::middleware::require_roles;
 use crate::error::AppError;
 use crate::models::hostel as hm;
-use crate::models::student::{list_students, StudentRow};
+use crate::models::student::{StudentRow, list_students};
 use crate::models::user::{CurrentUser, Role};
 use crate::state::AppState;
 use crate::util;
@@ -196,7 +196,9 @@ async fn release_allocation(
 ) -> Result<Response, AppError> {
     require_roles(&user, &[Role::Admin, Role::Staff])?;
     match hm::release_allocation(&state.pool, id).await {
-        Ok(_) => Ok(Redirect::to("/hostel?flash=Allocation+released&flash_kind=ok").into_response()),
+        Ok(_) => {
+            Ok(Redirect::to("/hostel?flash=Allocation+released&flash_kind=ok").into_response())
+        }
         Err(AppError::NotFound) => Ok(back_to("/hostel", "Allocation not found").into_response()),
         Err(e) => Err(e),
     }

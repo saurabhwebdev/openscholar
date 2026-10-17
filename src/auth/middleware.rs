@@ -7,7 +7,7 @@ use axum::{
 
 use crate::auth::session;
 use crate::error::AppError;
-use crate::models::user::{find_session_user, CurrentUser, Role};
+use crate::models::user::{CurrentUser, Role, find_session_user};
 use crate::state::AppState;
 use crate::util;
 
@@ -128,7 +128,10 @@ pub async fn security_headers(req: Request, next: Next) -> Response {
     let mut resp = next.run(req).await;
     let h = resp.headers_mut();
     h.insert("content-security-policy", HeaderValue::from_static(CSP));
-    h.insert("x-content-type-options", HeaderValue::from_static("nosniff"));
+    h.insert(
+        "x-content-type-options",
+        HeaderValue::from_static("nosniff"),
+    );
     h.insert("x-frame-options", HeaderValue::from_static("DENY"));
     h.insert(
         "referrer-policy",
@@ -144,7 +147,12 @@ pub async fn security_headers(req: Request, next: Next) -> Response {
 /// Extract `host[:port]` from an Origin/Referer URL value.
 fn url_host(value: &str) -> Option<&str> {
     let after_scheme = value.split("://").nth(1)?;
-    Some(after_scheme.split(['/', '?', '#']).next().unwrap_or(after_scheme))
+    Some(
+        after_scheme
+            .split(['/', '?', '#'])
+            .next()
+            .unwrap_or(after_scheme),
+    )
 }
 
 /// CSRF defense via Origin/Referer validation: for unsafe methods, if the
@@ -194,7 +202,9 @@ pub async fn csrf_protect(req: Request, next: Next) -> Response {
     let cookie_hdr = headers
         .get(axum::http::header::COOKIE)
         .and_then(|v| v.to_str().ok());
-    let expected = match cookie_hdr.and_then(|h| crate::auth::session::cookie_value(h, crate::auth::session::CSRF_COOKIE)) {
+    let expected = match cookie_hdr
+        .and_then(|h| crate::auth::session::cookie_value(h, crate::auth::session::CSRF_COOKIE))
+    {
         Some(t) if !t.is_empty() => t.to_string(),
         _ => return next.run(req).await,
     };
@@ -215,8 +225,11 @@ pub async fn csrf_protect(req: Request, next: Next) -> Response {
     let token_ok = std::str::from_utf8(&bytes)
         .ok()
         .and_then(|s| {
-            s.split('&')
-                .find_map(|p| p.split_once('=').filter(|(k, _)| *k == "_csrf").map(|(_, v)| v))
+            s.split('&').find_map(|p| {
+                p.split_once('=')
+                    .filter(|(k, _)| *k == "_csrf")
+                    .map(|(_, v)| v)
+            })
         })
         .map(|t| constant_time_eq(t.trim().as_bytes(), expected.as_bytes()))
         .unwrap_or(false);
@@ -280,6 +293,11 @@ mod tests {
     fn staff_side_helper_matches_roles() {
         assert!(user_with_role("admin").role_enum().unwrap().is_staff_side());
         assert!(user_with_role("parent").role_enum().is_ok());
-        assert!(!user_with_role("parent").role_enum().unwrap().is_staff_side());
+        assert!(
+            !user_with_role("parent")
+                .role_enum()
+                .unwrap()
+                .is_staff_side()
+        );
     }
 }

@@ -1,10 +1,10 @@
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Query, State},
     http::header,
     response::{Html, IntoResponse, Redirect},
     routing::{get, post},
-    Router,
 };
 use serde::Deserialize;
 
@@ -12,7 +12,7 @@ use crate::auth::middleware::require_roles;
 use crate::error::AppError;
 use crate::models::audit as audit_model;
 use crate::models::user::{CurrentUser, Role};
-use crate::pagination::{PageItem, DEFAULT_PER_PAGE};
+use crate::pagination::{DEFAULT_PER_PAGE, PageItem};
 use crate::state::AppState;
 use crate::util;
 
@@ -128,7 +128,11 @@ async fn list_audit(
         .await?;
         (total, rows)
     };
-    let total_pages = if total == 0 { 1 } else { (total + per_page - 1) / per_page };
+    let total_pages = if total == 0 {
+        1
+    } else {
+        (total + per_page - 1) / per_page
+    };
     let showing_start = if total == 0 { 0 } else { offset + 1 };
     let showing_end = std::cmp::min(offset + per_page, total);
 
@@ -248,7 +252,11 @@ async fn import_students(
         msg.push_str(&shown.join("; "));
     }
     // Green only on a clean import; otherwise warn.
-    let kind = if report.errors.is_empty() { "ok" } else { "error" };
+    let kind = if report.errors.is_empty() {
+        "ok"
+    } else {
+        "error"
+    };
     Ok(flash_redirect("/audit", &msg, kind).into_response())
 }
 

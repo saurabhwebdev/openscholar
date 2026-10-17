@@ -75,9 +75,7 @@ pub struct CurrentUser {
 
 impl CurrentUser {
     pub fn role_enum(&self) -> Result<Role, AppError> {
-        self.role
-            .parse()
-            .map_err(AppError::Internal)
+        self.role.parse().map_err(AppError::Internal)
     }
 
     pub fn has_role(&self, allowed: &[Role]) -> bool {

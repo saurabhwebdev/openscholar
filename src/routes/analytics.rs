@@ -1,10 +1,10 @@
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, State},
     http::StatusCode,
     response::{IntoResponse, Json},
     routing::get,
-    Router,
 };
 use serde_json::json;
 

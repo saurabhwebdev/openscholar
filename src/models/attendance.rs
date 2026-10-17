@@ -182,11 +182,7 @@ pub async fn save_attendance(
 
 /// Delete every attendance row for one class on one date.
 /// Returns the number of rows removed.
-pub async fn clear_day(
-    pool: &PgPool,
-    class_id: i64,
-    date: NaiveDate,
-) -> Result<u64, AppError> {
+pub async fn clear_day(pool: &PgPool, class_id: i64, date: NaiveDate) -> Result<u64, AppError> {
     let result = sqlx::query("DELETE FROM attendance WHERE class_id = $1 AND date = $2")
         .bind(class_id)
         .bind(date)

@@ -235,7 +235,14 @@ pub async fn borrow(
     student_id: i64,
     due_on: NaiveDate,
 ) -> Result<LoanRow, AppError> {
-    borrow_on(pool, book_id, student_id, chrono::Local::now().date_naive(), due_on).await
+    borrow_on(
+        pool,
+        book_id,
+        student_id,
+        chrono::Local::now().date_naive(),
+        due_on,
+    )
+    .await
 }
 
 pub async fn borrow_on(
@@ -326,9 +333,24 @@ pub async fn return_book_on(
 // Queries
 // ---------------------------------------------------------------------------
 
-pub async fn open_loans_for_student(pool: &PgPool, student_id: i64) -> Result<Vec<LoanView>, AppError> {
+pub async fn open_loans_for_student(
+    pool: &PgPool,
+    student_id: i64,
+) -> Result<Vec<LoanView>, AppError> {
     let today = chrono::Local::now().date_naive();
-    let rows = sqlx::query_as::<_, (i64, i64, String, i64, String, NaiveDate, NaiveDate, Option<NaiveDate>)>(
+    let rows = sqlx::query_as::<
+        _,
+        (
+            i64,
+            i64,
+            String,
+            i64,
+            String,
+            NaiveDate,
+            NaiveDate,
+            Option<NaiveDate>,
+        ),
+    >(
         "SELECT bl.id, bl.book_id, b.title, bl.student_id,
                 (s.first_name || ' ' || s.last_name) AS student_name,
                 bl.borrowed_on, bl.due_on, bl.returned_on
@@ -362,7 +384,19 @@ pub async fn overdue_loans(pool: &PgPool) -> Result<Vec<LoanView>, AppError> {
 }
 
 pub async fn overdue_loans_on(pool: &PgPool, today: NaiveDate) -> Result<Vec<LoanView>, AppError> {
-    let rows = sqlx::query_as::<_, (i64, i64, String, i64, String, NaiveDate, NaiveDate, Option<NaiveDate>)>(
+    let rows = sqlx::query_as::<
+        _,
+        (
+            i64,
+            i64,
+            String,
+            i64,
+            String,
+            NaiveDate,
+            NaiveDate,
+            Option<NaiveDate>,
+        ),
+    >(
         "SELECT bl.id, bl.book_id, b.title, bl.student_id,
                 (s.first_name || ' ' || s.last_name) AS student_name,
                 bl.borrowed_on, bl.due_on, bl.returned_on
@@ -393,7 +427,19 @@ pub async fn overdue_loans_on(pool: &PgPool, today: NaiveDate) -> Result<Vec<Loa
 
 pub async fn open_loans(pool: &PgPool) -> Result<Vec<LoanView>, AppError> {
     let today = chrono::Local::now().date_naive();
-    let rows = sqlx::query_as::<_, (i64, i64, String, i64, String, NaiveDate, NaiveDate, Option<NaiveDate>)>(
+    let rows = sqlx::query_as::<
+        _,
+        (
+            i64,
+            i64,
+            String,
+            i64,
+            String,
+            NaiveDate,
+            NaiveDate,
+            Option<NaiveDate>,
+        ),
+    >(
         "SELECT bl.id, bl.book_id, b.title, bl.student_id,
                 (s.first_name || ' ' || s.last_name) AS student_name,
                 bl.borrowed_on, bl.due_on, bl.returned_on

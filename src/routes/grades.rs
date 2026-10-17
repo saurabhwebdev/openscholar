@@ -2,17 +2,17 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{IntoResponse, Redirect},
     routing::{get, post},
-    Router,
 };
 use chrono::NaiveDate;
 use serde::Deserialize;
 
 use crate::error::AppError;
-use crate::models::grades as grades_model;
 use crate::models::audit as audit_model;
+use crate::models::grades as grades_model;
 use crate::models::user::{CurrentUser, Role};
 use crate::state::AppState;
 use crate::util;
@@ -22,11 +22,11 @@ pub fn router() -> Router<AppState> {
         .route("/grades", get(grades_list))
         .route("/assessments", post(create_assessment_submit))
         .route("/grades/assessments/{id}", get(assessment_scores_page))
+        .route("/grades/assessments/{id}/scores", post(save_scores_submit))
         .route(
-            "/grades/assessments/{id}/scores",
-            post(save_scores_submit),
+            "/grades/assessments/{id}/delete",
+            post(delete_assessment_submit),
         )
-        .route("/grades/assessments/{id}/delete", post(delete_assessment_submit))
 }
 
 // ---------------------------------------------------------------------------
@@ -171,9 +171,8 @@ async fn grades_list(
             })
             .collect(),
         selected_class: selected,
-        selected_class_name: selected.and_then(|id| {
-            options.iter().find(|c| c.id == id).map(|c| c.name.clone())
-        }),
+        selected_class_name: selected
+            .and_then(|id| options.iter().find(|c| c.id == id).map(|c| c.name.clone())),
         assessments: assessments
             .into_iter()
             .map(|a| AssessmentListView {
@@ -237,7 +236,13 @@ async fn create_assessment_submit(
     check_mutate(&user)?;
     let class_id: i64 = match form.class_id.trim().parse() {
         Ok(id) => id,
-        Err(_) => return Ok(flash_redirect("/grades", "Invalid class selection", "error")),
+        Err(_) => {
+            return Ok(flash_redirect(
+                "/grades",
+                "Invalid class selection",
+                "error",
+            ));
+        }
     };
     let max_score: f64 = match form.max_score.trim().parse() {
         Ok(v) => v,
@@ -289,7 +294,16 @@ async fn create_assessment_submit(
     .await
     {
         Ok(row) => {
-            if let Err(e) = audit_model::log_action(&state.pool, Some(user.id), "create", "assessment", Some(row.id), Some("assessment created")).await {
+            if let Err(e) = audit_model::log_action(
+                &state.pool,
+                Some(user.id),
+                "create",
+                "assessment",
+                Some(row.id),
+                Some("assessment created"),
+            )
+            .await
+            {
                 tracing::warn!(error = %e, "audit log failed");
             }
             Ok(flash_redirect(
@@ -298,8 +312,15 @@ async fn create_assessment_submit(
                 "ok",
             ))
         }
-        Err(AppError::Db(e)) if e.as_database_error().is_some_and(|db| db.is_foreign_key_violation()) => {
-            Ok(flash_redirect("/grades", "Selected class no longer exists", "error"))
+        Err(AppError::Db(e))
+            if e.as_database_error()
+                .is_some_and(|db| db.is_foreign_key_violation()) =>
+        {
+            Ok(flash_redirect(
+                "/grades",
+                "Selected class no longer exists",
+                "error",
+            ))
         }
         Err(e) => Err(e),
     }
@@ -404,7 +425,10 @@ async fn save_scores_submit(
     let mut scores: Vec<(i64, Option<f64>)> = Vec::with_capacity(detail.entries.len());
     for entry in &detail.entries {
         let key = format!("score_{}", entry.student_id);
-        let raw = form.get(&key).map(|s| s.trim().to_string()).unwrap_or_default();
+        let raw = form
+            .get(&key)
+            .map(|s| s.trim().to_string())
+            .unwrap_or_default();
         if raw.is_empty() {
             scores.push((entry.student_id, None));
             continue;
@@ -414,7 +438,11 @@ async fn save_scores_submit(
             Err(_) => {
                 return Ok(flash_redirect(
                     &back,
-                    &format!("{}: enter a number between 0 and {}", entry.full_name, fmt_num(max)),
+                    &format!(
+                        "{}: enter a number between 0 and {}",
+                        entry.full_name,
+                        fmt_num(max)
+                    ),
                     "error",
                 ));
             }
@@ -444,7 +472,16 @@ async fn delete_assessment_submit(
     check_mutate(&user)?;
     let class_id = match grades_model::delete_assessment(&state.pool, id).await {
         Ok(cid) => {
-            if let Err(e) = audit_model::log_action(&state.pool, Some(user.id), "delete", "assessment", Some(id), Some("assessment deleted")).await {
+            if let Err(e) = audit_model::log_action(
+                &state.pool,
+                Some(user.id),
+                "delete",
+                "assessment",
+                Some(id),
+                Some("assessment deleted"),
+            )
+            .await
+            {
                 tracing::warn!(error = %e, "audit log failed");
             }
             cid
@@ -487,7 +524,10 @@ mod tests {
             "ok",
         ));
         assert_eq!(status, StatusCode::SEE_OTHER);
-        assert_eq!(loc, "/grades?class_id=3&flash=Assessment+deleted&flash_kind=ok");
+        assert_eq!(
+            loc,
+            "/grades?class_id=3&flash=Assessment+deleted&flash_kind=ok"
+        );
     }
 
     #[test]

@@ -70,12 +70,7 @@ pub fn smtp_config_from(map: &HashMap<String, String>) -> SmtpConfig {
 }
 
 /// Build a plain-text email. Pure: no network, safe in unit tests.
-pub fn build_message(
-    from: &str,
-    to: &str,
-    subject: &str,
-    body: &str,
-) -> Result<Message, String> {
+pub fn build_message(from: &str, to: &str, subject: &str, body: &str) -> Result<Message, String> {
     let from_box: Mailbox = from
         .trim()
         .parse()
@@ -119,12 +114,7 @@ fn build_transport(config: &SmtpConfig) -> Result<SmtpTransport, String> {
 }
 
 /// Blocking send of one message. Run inside `spawn_blocking`.
-pub fn send_one(
-    config: &SmtpConfig,
-    to: &str,
-    subject: &str,
-    body: &str,
-) -> Result<(), AppError> {
+pub fn send_one(config: &SmtpConfig, to: &str, subject: &str, body: &str) -> Result<(), AppError> {
     let msg = build_message(&config.from, to, subject, body).map_err(AppError::Internal)?;
     let transport = build_transport(config).map_err(AppError::Internal)?;
     Transport::send(&transport, &msg)
@@ -218,9 +208,9 @@ mod tests {
         );
         assert_eq!(
             envelope.to(),
-            &[ "parent@example.com"
+            &["parent@example.com"
                 .parse::<lettre::Address>()
-                .expect("test address parses") ]
+                .expect("test address parses")]
         );
         let raw = String::from_utf8(msg.formatted()).expect("message formats");
         assert!(raw.contains("Absence alert"));

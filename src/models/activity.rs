@@ -67,7 +67,10 @@ pub async fn get_activity(pool: &PgPool, id: i64) -> Result<Option<ActivityRow>,
     find_activity(pool, id).await
 }
 
-pub async fn create_activity(pool: &PgPool, input: &ActivityInput) -> Result<ActivityRow, AppError> {
+pub async fn create_activity(
+    pool: &PgPool,
+    input: &ActivityInput,
+) -> Result<ActivityRow, AppError> {
     if let Err(msg) = validate_activity(&input.name) {
         return Err(AppError::BadRequest(msg));
     }
@@ -110,11 +113,18 @@ pub async fn create_activity_fields(
 pub async fn add_activity(pool: &PgPool, input: &ActivityInput) -> Result<ActivityRow, AppError> {
     create_activity(pool, input).await
 }
-pub async fn insert_activity(pool: &PgPool, input: &ActivityInput) -> Result<ActivityRow, AppError> {
+pub async fn insert_activity(
+    pool: &PgPool,
+    input: &ActivityInput,
+) -> Result<ActivityRow, AppError> {
     create_activity(pool, input).await
 }
 
-pub async fn update_activity(pool: &PgPool, id: i64, input: &ActivityInput) -> Result<ActivityRow, AppError> {
+pub async fn update_activity(
+    pool: &PgPool,
+    id: i64,
+    input: &ActivityInput,
+) -> Result<ActivityRow, AppError> {
     if let Err(msg) = validate_activity(&input.name) {
         return Err(AppError::BadRequest(msg));
     }
@@ -168,7 +178,10 @@ pub async fn remove_activity(pool: &PgPool, id: i64) -> Result<(), AppError> {
 // Members
 // ---------------------------------------------------------------------------
 
-pub async fn members_for_activity(pool: &PgPool, activity_id: i64) -> Result<Vec<MemberRow>, AppError> {
+pub async fn members_for_activity(
+    pool: &PgPool,
+    activity_id: i64,
+) -> Result<Vec<MemberRow>, AppError> {
     let rows = sqlx::query_as::<_, MemberRow>(
         "SELECT m.id, m.activity_id, m.student_id, m.joined_on,
                 (s.first_name || ' ' || s.last_name) AS student_name
@@ -189,7 +202,10 @@ pub async fn list_members(pool: &PgPool, activity_id: i64) -> Result<Vec<MemberR
     members_for_activity(pool, activity_id).await
 }
 
-pub async fn activities_for_student(pool: &PgPool, student_id: i64) -> Result<Vec<ActivityRow>, AppError> {
+pub async fn activities_for_student(
+    pool: &PgPool,
+    student_id: i64,
+) -> Result<Vec<ActivityRow>, AppError> {
     let rows = sqlx::query_as::<_, ActivityRow>(
         "SELECT a.id, a.name, a.kind, a.description, a.supervisor_id, a.created_at
          FROM activities a
@@ -284,11 +300,12 @@ pub async fn remove_member_by_activity_student(
     activity_id: i64,
     student_id: i64,
 ) -> Result<(), AppError> {
-    let res = sqlx::query("DELETE FROM activity_members WHERE activity_id = $1 AND student_id = $2")
-        .bind(activity_id)
-        .bind(student_id)
-        .execute(pool)
-        .await?;
+    let res =
+        sqlx::query("DELETE FROM activity_members WHERE activity_id = $1 AND student_id = $2")
+            .bind(activity_id)
+            .bind(student_id)
+            .execute(pool)
+            .await?;
     if res.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }

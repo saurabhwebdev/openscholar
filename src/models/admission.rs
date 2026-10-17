@@ -85,8 +85,7 @@ pub struct ApplicantInput {
 }
 
 pub const ALLOWED_GENDERS: &[&str] = &["male", "female", "other"];
-pub const ALLOWED_STATUSES: &[&str] =
-    &["new", "reviewing", "accepted", "rejected", "enrolled"];
+pub const ALLOWED_STATUSES: &[&str] = &["new", "reviewing", "accepted", "rejected", "enrolled"];
 
 /// Pure validation for the new-applicant form.
 ///

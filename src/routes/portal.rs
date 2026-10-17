@@ -2,22 +2,22 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
 };
 use chrono::NaiveDate;
 use serde::Deserialize;
 
 use crate::auth::middleware::require_roles;
 use crate::error::AppError;
-use crate::models::user::{CurrentUser, Role};
-use crate::models::transport as transport_model;
-use crate::models::welfare as welfare_model;
-use crate::models::hostel as hostel_model;
 use crate::models::activity as activity_model;
+use crate::models::hostel as hostel_model;
 use crate::models::lesson as lesson_model;
+use crate::models::transport as transport_model;
+use crate::models::user::{CurrentUser, Role};
+use crate::models::welfare as welfare_model;
 use crate::state::AppState;
 use crate::util;
 
@@ -100,9 +100,7 @@ pub fn validate_portal_email(raw: &str) -> Result<String, String> {
         return Err("Enter a valid email address".to_string());
     }
     let mut parts = t.split('@');
-    let (Some(local), Some(domain), None) =
-        (parts.next(), parts.next(), parts.next())
-    else {
+    let (Some(local), Some(domain), None) = (parts.next(), parts.next(), parts.next()) else {
         return Err("Enter a valid email address".to_string());
     };
     if local.is_empty() || domain.is_empty() || !domain.contains('.') {
@@ -135,9 +133,7 @@ pub fn summarize_attendance(statuses: &[&str]) -> (i64, i64) {
 /// True when `err` is a Postgres unique-violation (duplicate `parent_links` pair).
 pub fn is_duplicate_link(err: &AppError) -> bool {
     match err {
-        AppError::Db(sqlx::Error::Database(db)) => {
-            db.code().as_deref() == Some("23505")
-        }
+        AppError::Db(sqlx::Error::Database(db)) => db.code().as_deref() == Some("23505"),
         _ => false,
     }
 }
@@ -535,7 +531,11 @@ async fn portal_home(
             children.push(load_child(&state.pool, sid).await?);
         }
         let t = home_context(&user, &params, children);
-        return t.render().map(Html).map_err(AppError::from).map(|h| h.into_response());
+        return t
+            .render()
+            .map(Html)
+            .map_err(AppError::from)
+            .map(|h| h.into_response());
     }
     if user.has_role(&[Role::Student]) {
         let own: Option<i64> =
@@ -548,7 +548,11 @@ async fn portal_home(
             children.push(load_child(&state.pool, sid).await?);
         }
         let t = home_context(&user, &params, children);
-        return t.render().map(Html).map_err(AppError::from).map(|h| h.into_response());
+        return t
+            .render()
+            .map(Html)
+            .map_err(AppError::from)
+            .map(|h| h.into_response());
     }
     Err(AppError::Forbidden)
 }
@@ -587,7 +591,10 @@ async fn portal_child(
     }
     let child = load_child(&state.pool, id).await?;
     let t = child_context(&user, &params, child);
-    t.render().map(Html).map_err(AppError::from).map(|h| h.into_response())
+    t.render()
+        .map(Html)
+        .map_err(AppError::from)
+        .map(|h| h.into_response())
 }
 
 // ---------------------------------------------------------------------------
@@ -652,16 +659,15 @@ async fn link_parent_submit(
     .execute(&state.pool)
     .await;
     match done {
-        Ok(r) if r.rows_affected() == 0 => Ok(
-            flash_redirect(&back, "That parent is already linked", "info").into_response(),
-        ),
+        Ok(r) if r.rows_affected() == 0 => {
+            Ok(flash_redirect(&back, "That parent is already linked", "info").into_response())
+        }
         Ok(_) => Ok(flash_redirect(&back, "Parent linked", "ok").into_response()),
         Err(e) => {
-            let dup = matches!(&e, sqlx::Error::Database(db) if db.code().as_deref() == Some("23505"));
+            let dup =
+                matches!(&e, sqlx::Error::Database(db) if db.code().as_deref() == Some("23505"));
             if dup {
-                Ok(
-                    flash_redirect(&back, "That parent is already linked", "info").into_response(),
-                )
+                Ok(flash_redirect(&back, "That parent is already linked", "info").into_response())
             } else {
                 Err(AppError::Db(e))
             }
@@ -687,9 +693,7 @@ async fn delete_parent_link_submit(
         .bind(id)
         .execute(&state.pool)
         .await?;
-    Ok(
-        flash_redirect(&format!("/students/{sid}"), "Link removed", "ok").into_response(),
-    )
+    Ok(flash_redirect(&format!("/students/{sid}"), "Link removed", "ok").into_response())
 }
 
 async fn link_student_user_submit(
@@ -747,10 +751,7 @@ mod tests {
     #[test]
     fn parent_sees_only_own_links_sorted_deduped() {
         let all = links(&[(9, 30), (9, 10), (9, 30), (8, 99)]);
-        assert_eq!(
-            child_ids_for(&Role::Parent, 9, &all, None),
-            vec![10, 30]
-        );
+        assert_eq!(child_ids_for(&Role::Parent, 9, &all, None), vec![10, 30]);
     }
 
     #[test]
@@ -761,10 +762,7 @@ mod tests {
 
     #[test]
     fn student_sees_only_own_row() {
-        assert_eq!(
-            child_ids_for(&Role::Student, 5, &[], Some(42)),
-            vec![42]
-        );
+        assert_eq!(child_ids_for(&Role::Student, 5, &[], Some(42)), vec![42]);
         assert!(child_ids_for(&Role::Student, 5, &[], None).is_empty());
     }
 
@@ -831,7 +829,10 @@ mod tests {
 
     #[test]
     fn summarizes_attendance_counts() {
-        assert_eq!(summarize_attendance(&["present", "absent", "present"]), (2, 3));
+        assert_eq!(
+            summarize_attendance(&["present", "absent", "present"]),
+            (2, 3)
+        );
         assert_eq!(summarize_attendance(&[]), (0, 0));
         assert_eq!(summarize_attendance(&["late", "excused"]), (0, 2));
     }

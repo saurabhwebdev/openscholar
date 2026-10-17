@@ -1,9 +1,9 @@
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
 };
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -17,7 +17,10 @@ use crate::util;
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/activities", get(activities_list).post(create_activity_submit))
+        .route(
+            "/activities",
+            get(activities_list).post(create_activity_submit),
+        )
         .route("/activities/my", get(my_activities))
         .route("/activities/{id}", get(activity_detail))
         .route("/activities/{id}/members", post(add_member_submit))
@@ -178,7 +181,9 @@ async fn activity_detail(
     let activity = am::find_activity(&state.pool, id)
         .await?
         .ok_or(AppError::NotFound)?;
-    let members_rows = am::members_for_activity(&state.pool, id).await.unwrap_or_default();
+    let members_rows = am::members_for_activity(&state.pool, id)
+        .await
+        .unwrap_or_default();
     // Names are joined in by members_for_activity (no per-member query).
     let members: Vec<MemberView> = members_rows
         .into_iter()
@@ -233,11 +238,21 @@ async fn add_member_submit(
     check_mutate(&user)?;
     let student_id: i64 = match form.student_id.trim().parse() {
         Ok(v) => v,
-        Err(_) => return Ok(flash_redirect(&format!("/activities/{id}"), "Invalid student", "error").into_response()),
+        Err(_) => {
+            return Ok(
+                flash_redirect(&format!("/activities/{id}"), "Invalid student", "error")
+                    .into_response(),
+            );
+        }
     };
     match am::add_member(&state.pool, id, student_id, None).await {
-        Ok(_) => Ok(Redirect::to(&format!("/activities/{id}?flash=Member+added&flash_kind=ok")).into_response()),
-        Err(AppError::BadRequest(msg)) => Ok(flash_redirect(&format!("/activities/{id}"), &msg, "error").into_response()),
+        Ok(_) => Ok(Redirect::to(&format!(
+            "/activities/{id}?flash=Member+added&flash_kind=ok"
+        ))
+        .into_response()),
+        Err(AppError::BadRequest(msg)) => {
+            Ok(flash_redirect(&format!("/activities/{id}"), &msg, "error").into_response())
+        }
         Err(e) => Err(e),
     }
 }
@@ -249,10 +264,11 @@ async fn delete_member_submit(
 ) -> Result<Response, AppError> {
     check_mutate(&user)?;
     // find activity for redirect
-    let member = sqlx::query_scalar::<_, i64>("SELECT activity_id FROM activity_members WHERE id = $1")
-        .bind(id)
-        .fetch_optional(&state.pool)
-        .await?;
+    let member =
+        sqlx::query_scalar::<_, i64>("SELECT activity_id FROM activity_members WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&state.pool)
+            .await?;
     match am::remove_member(&state.pool, id).await {
         Ok(_) => {
             let target = member
@@ -287,18 +303,18 @@ async fn my_activities(
 ) -> Result<impl IntoResponse, AppError> {
     let mut student_ids: Vec<i64> = Vec::new();
     if user.has_role(&[Role::Parent]) {
-        let ids: Vec<i64> = sqlx::query_scalar(
-            "SELECT student_id FROM parent_links WHERE parent_user_id = $1",
-        )
-        .bind(user.id)
-        .fetch_all(&state.pool)
-        .await?;
+        let ids: Vec<i64> =
+            sqlx::query_scalar("SELECT student_id FROM parent_links WHERE parent_user_id = $1")
+                .bind(user.id)
+                .fetch_all(&state.pool)
+                .await?;
         student_ids = ids;
     } else if user.has_role(&[Role::Student]) {
-        let own: Option<i64> = sqlx::query_scalar("SELECT id FROM students WHERE user_id = $1 LIMIT 1")
-            .bind(user.id)
-            .fetch_optional(&state.pool)
-            .await?;
+        let own: Option<i64> =
+            sqlx::query_scalar("SELECT id FROM students WHERE user_id = $1 LIMIT 1")
+                .bind(user.id)
+                .fetch_optional(&state.pool)
+                .await?;
         if let Some(id) = own {
             student_ids.push(id);
         }

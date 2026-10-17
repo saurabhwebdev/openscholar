@@ -2,13 +2,13 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Query, State},
     response::{Html, IntoResponse, Redirect},
     routing::{get, post},
-    Router,
 };
 
-use crate::comms::mailer::{send_one, SmtpConfig};
+use crate::comms::mailer::{SmtpConfig, send_one};
 use crate::error::AppError;
 use crate::models::user::{CurrentUser, Role};
 use crate::pagination::PageItem;

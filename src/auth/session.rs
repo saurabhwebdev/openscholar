@@ -97,7 +97,11 @@ pub async fn delete_session(pool: &PgPool, id: Uuid) -> Result<(), AppError> {
 
 /// Invalidate every session for a user except `keep` (used on self password
 /// change so the acting session stays logged in but other devices are kicked).
-pub async fn delete_other_sessions(pool: &PgPool, user_id: i64, keep: Uuid) -> Result<(), AppError> {
+pub async fn delete_other_sessions(
+    pool: &PgPool,
+    user_id: i64,
+    keep: Uuid,
+) -> Result<(), AppError> {
     sqlx::query("DELETE FROM sessions WHERE user_id = $1 AND id <> $2")
         .bind(user_id)
         .bind(keep)

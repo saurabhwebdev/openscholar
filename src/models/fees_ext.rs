@@ -69,7 +69,10 @@ pub fn validate_discount(name: &str, percent: f64) -> Result<(), String> {
 }
 
 pub fn validate_discount_str(name: &str, percent: &str) -> Result<(), String> {
-    let p: f64 = percent.trim().parse().map_err(|_| "Percent must be a number".to_string())?;
+    let p: f64 = percent
+        .trim()
+        .parse()
+        .map_err(|_| "Percent must be a number".to_string())?;
     validate_discount(name, p)
 }
 
@@ -124,7 +127,12 @@ pub async fn create_category(
          RETURNING id, name, description, created_at",
     )
     .bind(name.trim())
-    .bind(description.map(str::trim).filter(|s| !s.is_empty()).map(str::to_string))
+    .bind(
+        description
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string),
+    )
     .fetch_one(pool)
     .await?;
     Ok(row)
@@ -137,22 +145,26 @@ pub async fn update_category(
     description: Option<&str>,
 ) -> Result<bool, AppError> {
     validate_category(name).map_err(AppError::BadRequest)?;
-    let result = sqlx::query(
-        "UPDATE fee_categories SET name = $2, description = $3 WHERE id = $1",
-    )
-    .bind(id)
-    .bind(name.trim())
-    .bind(description.map(str::trim).filter(|s| !s.is_empty()).map(str::to_string))
-    .execute(pool)
-    .await?;
+    let result = sqlx::query("UPDATE fee_categories SET name = $2, description = $3 WHERE id = $1")
+        .bind(id)
+        .bind(name.trim())
+        .bind(
+            description
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_string),
+        )
+        .execute(pool)
+        .await?;
     Ok(result.rows_affected() > 0)
 }
 
 pub async fn delete_category(pool: &PgPool, id: i64) -> Result<bool, AppError> {
-    let count: i64 = sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM invoices WHERE category_id = $1")
-        .bind(id)
-        .fetch_one(pool)
-        .await?;
+    let count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM invoices WHERE category_id = $1")
+            .bind(id)
+            .fetch_one(pool)
+            .await?;
     if count > 0 {
         return Err(AppError::BadRequest(
             "Cannot delete a category that is used by invoices".to_string(),
@@ -243,7 +255,10 @@ pub async fn list_fines(pool: &PgPool, invoice_id: i64) -> Result<Vec<FineRow>, 
     Ok(rows)
 }
 
-pub async fn list_fines_for_invoice(pool: &PgPool, invoice_id: i64) -> Result<Vec<FineRow>, AppError> {
+pub async fn list_fines_for_invoice(
+    pool: &PgPool,
+    invoice_id: i64,
+) -> Result<Vec<FineRow>, AppError> {
     list_fines(pool, invoice_id).await
 }
 
@@ -292,7 +307,10 @@ pub async fn delete_fine(pool: &PgPool, id: i64) -> Result<bool, AppError> {
 // Receipts
 // ---------------------------------------------------------------------------
 
-pub async fn receipt_for_payment(pool: &PgPool, payment_id: i64) -> Result<Option<ReceiptRow>, AppError> {
+pub async fn receipt_for_payment(
+    pool: &PgPool,
+    payment_id: i64,
+) -> Result<Option<ReceiptRow>, AppError> {
     let row = sqlx::query_as::<_, ReceiptRow>(
         "SELECT id, payment_id, number, issued_at, issued_by FROM receipts WHERE payment_id = $1 ORDER BY id ASC LIMIT 1",
     )
@@ -302,8 +320,13 @@ pub async fn receipt_for_payment(pool: &PgPool, payment_id: i64) -> Result<Optio
     Ok(row)
 }
 
-pub async fn receipt_number_for_payment(pool: &PgPool, payment_id: i64) -> Result<Option<String>, AppError> {
-    Ok(receipt_for_payment(pool, payment_id).await?.map(|r| r.number))
+pub async fn receipt_number_for_payment(
+    pool: &PgPool,
+    payment_id: i64,
+) -> Result<Option<String>, AppError> {
+    Ok(receipt_for_payment(pool, payment_id)
+        .await?
+        .map(|r| r.number))
 }
 
 pub async fn ensure_receipt<I>(
@@ -344,7 +367,9 @@ where
     I: Into<Option<i64>>,
 {
     ensure_receipt(pool, payment_id, issued_by).await?;
-    receipt_for_payment(pool, payment_id).await?.ok_or(AppError::NotFound)
+    receipt_for_payment(pool, payment_id)
+        .await?
+        .ok_or(AppError::NotFound)
 }
 
 // ---------------------------------------------------------------------------
@@ -356,12 +381,11 @@ pub async fn apply_discount_to_invoice(
     invoice_id: i64,
     discount_cents: i64,
 ) -> Result<(), AppError> {
-    let row: Option<(i64, i64)> = sqlx::query_as(
-        "SELECT amount_cents, discount_cents FROM invoices WHERE id = $1",
-    )
-    .bind(invoice_id)
-    .fetch_optional(pool)
-    .await?;
+    let row: Option<(i64, i64)> =
+        sqlx::query_as("SELECT amount_cents, discount_cents FROM invoices WHERE id = $1")
+            .bind(invoice_id)
+            .fetch_optional(pool)
+            .await?;
     let (amount, prev_discount) = row.ok_or(AppError::NotFound)?;
     let base = amount + prev_discount;
     let new_discount = discount_cents.clamp(0, base);
@@ -399,12 +423,11 @@ pub async fn apply_discount_to_invoice_percent(
     invoice_id: i64,
     percent: f64,
 ) -> Result<(), AppError> {
-    let row: Option<(i64, i64)> = sqlx::query_as(
-        "SELECT amount_cents, discount_cents FROM invoices WHERE id = $1",
-    )
-    .bind(invoice_id)
-    .fetch_optional(pool)
-    .await?;
+    let row: Option<(i64, i64)> =
+        sqlx::query_as("SELECT amount_cents, discount_cents FROM invoices WHERE id = $1")
+            .bind(invoice_id)
+            .fetch_optional(pool)
+            .await?;
     let (amount, prev_discount) = row.ok_or(AppError::NotFound)?;
     let base = amount + prev_discount;
     // Integer money math: treat percent as basis points (hundredths of a

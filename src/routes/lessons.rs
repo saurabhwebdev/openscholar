@@ -1,9 +1,9 @@
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
 };
 use chrono::NaiveDate;
 use serde::Deserialize;
@@ -99,7 +99,9 @@ async fn lessons_list(
     Query(params): Query<ListParams>,
 ) -> Result<impl IntoResponse, AppError> {
     check_mutate(&user)?;
-    let class_options = grades_model::list_class_options(&state.pool).await.unwrap_or_default();
+    let class_options = grades_model::list_class_options(&state.pool)
+        .await
+        .unwrap_or_default();
     let selected = params
         .class_id
         .as_deref()
@@ -112,7 +114,10 @@ async fn lessons_list(
         None => Vec::new(),
     };
     let (user_name, user_initial) = user_ctx(&user);
-    let (flash, flash_kind) = (params.flash, params.flash_kind.unwrap_or_else(|| "info".to_string()));
+    let (flash, flash_kind) = (
+        params.flash,
+        params.flash_kind.unwrap_or_else(|| "info".to_string()),
+    );
     let t = ListTemplate {
         section: "lessons",
         section_label: "Lessons",
@@ -168,13 +173,23 @@ async fn create_lesson_submit(
         Err(_) => return Ok(flash_redirect("/lessons", "Invalid class", "error").into_response()),
     };
     if let Err(msg) = lm::validate_lesson(&form.title, &form.date) {
-        return Ok(flash_redirect(&format!("/lessons?class_id={class_id}"), &msg, "error").into_response());
+        return Ok(
+            flash_redirect(&format!("/lessons?class_id={class_id}"), &msg, "error").into_response(),
+        );
     }
     let date = NaiveDate::parse_from_str(form.date.trim(), "%Y-%m-%d").unwrap();
     let subject_id = form.subject_id.trim().parse::<i64>().ok();
     let teacher_id = form.teacher_id.trim().parse::<i64>().ok();
-    let body = if form.body.trim().is_empty() { None } else { Some(form.body.trim().to_string()) };
-    let homework = if form.homework.trim().is_empty() { None } else { Some(form.homework.trim().to_string()) };
+    let body = if form.body.trim().is_empty() {
+        None
+    } else {
+        Some(form.body.trim().to_string())
+    };
+    let homework = if form.homework.trim().is_empty() {
+        None
+    } else {
+        Some(form.homework.trim().to_string())
+    };
     let input = LessonInput {
         class_id,
         subject_id,
@@ -225,7 +240,9 @@ async fn lesson_detail(
     let lesson = lm::find_lesson(&state.pool, id)
         .await?
         .ok_or(AppError::NotFound)?;
-    let materials = lm::list_materials(&state.pool, id).await.unwrap_or_default();
+    let materials = lm::list_materials(&state.pool, id)
+        .await
+        .unwrap_or_default();
     let (flash, flash_kind) = flash_params(&params);
     let (user_name, user_initial) = user_ctx(&user);
     let t = DetailTemplate {
@@ -263,7 +280,10 @@ async fn add_material_submit(
 ) -> Result<Response, AppError> {
     check_mutate(&user)?;
     if form.filename.trim().is_empty() {
-        return Ok(flash_redirect(&format!("/lessons/{id}"), "File name is required", "error").into_response());
+        return Ok(
+            flash_redirect(&format!("/lessons/{id}"), "File name is required", "error")
+                .into_response(),
+        );
     }
     let size: i64 = form.size_bytes.trim().parse().unwrap_or(0);
     let storage_key = if form.storage_key.trim().is_empty() {
@@ -272,9 +292,17 @@ async fn add_material_submit(
         form.storage_key.trim().to_string()
     };
     match lm::add_material(&state.pool, id, &form.filename, &storage_key, size).await {
-        Ok(_) => Ok(Redirect::to(&format!("/lessons/{id}?flash=Material+added&flash_kind=ok")).into_response()),
+        Ok(_) => Ok(
+            Redirect::to(&format!("/lessons/{id}?flash=Material+added&flash_kind=ok"))
+                .into_response(),
+        ),
         Err(AppError::Db(sqlx::Error::Database(db))) if db.code().as_deref() == Some("23503") => {
-            Ok(flash_redirect(&format!("/lessons/{id}"), "That lesson no longer exists", "error").into_response())
+            Ok(flash_redirect(
+                &format!("/lessons/{id}"),
+                "That lesson no longer exists",
+                "error",
+            )
+            .into_response())
         }
         Err(e) => Err(e),
     }
@@ -325,18 +353,18 @@ async fn my_lessons(
 ) -> Result<impl IntoResponse, AppError> {
     let mut student_ids: Vec<i64> = Vec::new();
     if user.has_role(&[Role::Parent]) {
-        let ids: Vec<i64> = sqlx::query_scalar(
-            "SELECT student_id FROM parent_links WHERE parent_user_id = $1",
-        )
-        .bind(user.id)
-        .fetch_all(&state.pool)
-        .await?;
+        let ids: Vec<i64> =
+            sqlx::query_scalar("SELECT student_id FROM parent_links WHERE parent_user_id = $1")
+                .bind(user.id)
+                .fetch_all(&state.pool)
+                .await?;
         student_ids = ids;
     } else if user.has_role(&[Role::Student]) {
-        let own: Option<i64> = sqlx::query_scalar("SELECT id FROM students WHERE user_id = $1 LIMIT 1")
-            .bind(user.id)
-            .fetch_optional(&state.pool)
-            .await?;
+        let own: Option<i64> =
+            sqlx::query_scalar("SELECT id FROM students WHERE user_id = $1 LIMIT 1")
+                .bind(user.id)
+                .fetch_optional(&state.pool)
+                .await?;
         if let Some(id) = own {
             student_ids.push(id);
         }

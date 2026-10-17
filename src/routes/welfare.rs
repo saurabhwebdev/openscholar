@@ -2,17 +2,17 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
 };
 use chrono::NaiveDate;
 use serde::Deserialize;
 
 use crate::auth::middleware::require_roles;
 use crate::error::AppError;
-use crate::models::student::{find_student, StudentView};
+use crate::models::student::{StudentView, find_student};
 use crate::models::user::{CurrentUser, Role};
 use crate::models::welfare as w;
 use crate::state::AppState;
@@ -129,7 +129,9 @@ async fn detail(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, AppError> {
     require_roles(&user, &[Role::Admin, Role::Staff])?;
-    let row = find_student(&state.pool, id).await?.ok_or(AppError::NotFound)?;
+    let row = find_student(&state.pool, id)
+        .await?
+        .ok_or(AppError::NotFound)?;
     let student = StudentView::from(row);
     let incidents = w::list_incidents(&state.pool, id)
         .await?
@@ -228,8 +230,8 @@ async fn create_incident(
     if let Err(msg) = w::validate_incident(&form.description, &kind) {
         return Ok(back_to(&base, &msg).into_response());
     }
-    let incident_date = parse_date(&form.incident_date)?
-        .unwrap_or_else(|| chrono::Local::now().date_naive());
+    let incident_date =
+        parse_date(&form.incident_date)?.unwrap_or_else(|| chrono::Local::now().date_naive());
     let input = w::IncidentInput {
         student_id: id,
         incident_date,
@@ -294,8 +296,8 @@ async fn create_medical(
     if let Err(msg) = w::validate_medical(&form.title, &record_type) {
         return Ok(back_to(&base, &msg).into_response());
     }
-    let recorded_on = parse_date(&form.recorded_on)?
-        .unwrap_or_else(|| chrono::Local::now().date_naive());
+    let recorded_on =
+        parse_date(&form.recorded_on)?.unwrap_or_else(|| chrono::Local::now().date_naive());
     let input = w::MedicalInput {
         student_id: id,
         record_type,

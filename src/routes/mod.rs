@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use axum::{extract::DefaultBodyLimit, middleware, response::Redirect, routing::get, Router};
+use axum::{Router, extract::DefaultBodyLimit, middleware, response::Redirect, routing::get};
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::services::ServeDir;
 use tower_http::timeout::TimeoutLayer;
@@ -14,8 +14,8 @@ pub mod admissions;
 pub mod analytics;
 pub mod api;
 pub mod attachments;
-pub mod audit;
 pub mod attendance;
+pub mod audit;
 pub mod classes;
 pub mod dashboard;
 pub mod fees;
@@ -78,9 +78,14 @@ pub fn app_router(state: AppState) -> Router {
         .merge(activities::router())
         .merge(api::router());
 
-    let protected = Router::new().merge(staff).merge(family).route_layer(
-        middleware::from_fn_with_state(state.clone(), auth::middleware::require_auth),
-    );
+    let protected =
+        Router::new()
+            .merge(staff)
+            .merge(family)
+            .route_layer(middleware::from_fn_with_state(
+                state.clone(),
+                auth::middleware::require_auth,
+            ));
 
     Router::new()
         .route("/", get(|| async { Redirect::to("/dashboard") }))

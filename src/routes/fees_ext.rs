@@ -1,9 +1,9 @@
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{Html, IntoResponse, Redirect},
     routing::{get, post},
-    Router,
 };
 use serde::Deserialize;
 
@@ -16,7 +16,10 @@ use crate::util;
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/fees/categories", get(categories_page).post(create_category_submit))
+        .route(
+            "/fees/categories",
+            get(categories_page).post(create_category_submit),
+        )
         .route("/fees/categories/{id}/delete", post(delete_category_submit))
         .route("/fees/{id}/discount", post(apply_discount_submit))
         .route("/fees/{id}/fines", post(create_fine_submit))
@@ -120,10 +123,16 @@ async fn create_category_submit(
     };
     match fee_ext::create_category(&state.pool, form.name.trim(), desc).await {
         Ok(_) => Ok(flash_redirect("/fees/categories", "Category created", "ok")),
-        Err(AppError::Db(e)) if e.to_string().contains("unique") => {
-            Ok(flash_redirect("/fees/categories", "Category already exists", "error"))
-        }
-        Err(_) => Ok(flash_redirect("/fees/categories", "Could not create category", "error")),
+        Err(AppError::Db(e)) if e.to_string().contains("unique") => Ok(flash_redirect(
+            "/fees/categories",
+            "Category already exists",
+            "error",
+        )),
+        Err(_) => Ok(flash_redirect(
+            "/fees/categories",
+            "Could not create category",
+            "error",
+        )),
     }
 }
 
@@ -139,9 +148,17 @@ async fn delete_category_submit(
     check_mutate(&user)?;
     match fee_ext::delete_category(&state.pool, id).await {
         Ok(true) => Ok(flash_redirect("/fees/categories", "Category deleted", "ok")),
-        Ok(false) => Ok(flash_redirect("/fees/categories", "Category not found", "error")),
+        Ok(false) => Ok(flash_redirect(
+            "/fees/categories",
+            "Category not found",
+            "error",
+        )),
         Err(AppError::BadRequest(msg)) => Ok(flash_redirect("/fees/categories", &msg, "error")),
-        Err(_) => Ok(flash_redirect("/fees/categories", "Could not delete category", "error")),
+        Err(_) => Ok(flash_redirect(
+            "/fees/categories",
+            "Could not delete category",
+            "error",
+        )),
     }
 }
 
@@ -183,10 +200,18 @@ async fn apply_discount_submit(
         }
         fee_ext::apply_discount_to_invoice_percent(&state.pool, id, p).await
     } else {
-        return Ok(flash_redirect(&target, "Provide discount or percent", "error"));
+        return Ok(flash_redirect(
+            &target,
+            "Provide discount or percent",
+            "error",
+        ));
     };
     match res {
-        Ok(_) => Ok(flash_redirect(&target, "Discount applied (replaces any previous discount)", "ok")),
+        Ok(_) => Ok(flash_redirect(
+            &target,
+            "Discount applied (replaces any previous discount)",
+            "ok",
+        )),
         Err(AppError::BadRequest(msg)) => Ok(flash_redirect(&target, &msg, "error")),
         Err(AppError::NotFound) => Ok(flash_redirect(&target, "Invoice not found", "error")),
         Err(_) => Ok(flash_redirect(&target, "Could not apply discount", "error")),
@@ -241,7 +266,9 @@ async fn delete_fine_submit(
     // find invoice for redirect
     let fine = fee_ext::find_fine(&state.pool, id).await?;
     let invoice_id = fine.map(|f| f.invoice_id);
-    let target = invoice_id.map(|i| format!("/fees/{i}")).unwrap_or_else(|| "/fees".to_string());
+    let target = invoice_id
+        .map(|i| format!("/fees/{i}"))
+        .unwrap_or_else(|| "/fees".to_string());
     match fee_ext::delete_fine(&state.pool, id).await {
         Ok(true) => Ok(flash_redirect(&target, "Fine deleted", "ok")),
         Ok(false) => Ok(flash_redirect(&target, "Fine not found", "error")),

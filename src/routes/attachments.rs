@@ -2,12 +2,12 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
+    Router,
     body::Bytes,
     extract::{Extension, Form, Path, Query, State},
-    http::{header, StatusCode},
+    http::{StatusCode, header},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
 };
 use serde::Deserialize;
 
@@ -157,14 +157,15 @@ async fn create(
     // Build a safe storage key.
     let safe_entity: String = entity
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
-    let key = format!(
-        "{}/{}/{}",
-        safe_entity,
-        entity_id,
-        uuid::Uuid::new_v4()
-    );
+    let key = format!("{}/{}/{}", safe_entity, entity_id, uuid::Uuid::new_v4());
 
     let backend = storage::StorageConfig::from_env().backend();
     if let Err(e) = storage::store_bytes(&backend, &key, &bytes, content_type.as_deref()).await {
@@ -205,11 +206,7 @@ fn redirect_after(entity: &str, entity_id: i64, msg: &str) -> String {
         "student" => format!("/students/{}", entity_id),
         _ => "/attachments".to_string(),
     };
-    format!(
-        "{}?flash={}&flash_kind=ok",
-        base,
-        util::url_encode(msg)
-    )
+    format!("{}?flash={}&flash_kind=ok", base, util::url_encode(msg))
 }
 
 async fn delete_attachment(
@@ -259,7 +256,9 @@ async fn download(
         .await?
         .ok_or(AppError::NotFound)?;
     let path = std::path::Path::new("uploads").join(&row.storage_key);
-    let bytes = tokio::fs::read(&path).await.map_err(|_| AppError::NotFound)?;
+    let bytes = tokio::fs::read(&path)
+        .await
+        .map_err(|_| AppError::NotFound)?;
     let content_type = row
         .content_type
         .clone()
@@ -289,6 +288,9 @@ mod tests {
 
     #[test]
     fn redirect_after_student() {
-        assert_eq!(redirect_after("student", 5, "Uploaded"), "/students/5?flash=Uploaded&flash_kind=ok");
+        assert_eq!(
+            redirect_after("student", 5, "Uploaded"),
+            "/students/5?flash=Uploaded&flash_kind=ok"
+        );
     }
 }

@@ -1,9 +1,9 @@
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{IntoResponse, Redirect},
     routing::{get, post},
-    Router,
 };
 use chrono::Datelike;
 use serde::Deserialize;
@@ -63,9 +63,10 @@ fn db_flash(e: AppError) -> (String, String) {
     match e {
         AppError::BadRequest(msg) => (msg, "error".to_string()),
         AppError::NotFound => ("Not found".to_string(), "error".to_string()),
-        AppError::Db(sqlx::Error::Database(db)) if db.is_unique_violation() => {
-            ("That record already exists".to_string(), "error".to_string())
-        }
+        AppError::Db(sqlx::Error::Database(db)) if db.is_unique_violation() => (
+            "That record already exists".to_string(),
+            "error".to_string(),
+        ),
         other => {
             tracing::error!(error = %other, "timetable route error");
             ("Something went wrong".to_string(), "error".to_string())
@@ -382,7 +383,11 @@ async fn slot_create(
     let period_id = opt_id(form.period_id)?;
     let teacher_id = opt_id(form.teacher_id)?;
     let (Some(subject_id), Some(period_id)) = (subject_id, period_id) else {
-        return Ok(flash_redirect(&back, "Choose a subject and a period", "error"));
+        return Ok(flash_redirect(
+            &back,
+            "Choose a subject and a period",
+            "error",
+        ));
     };
     match tt::save_slot(
         &state.pool,

@@ -158,12 +158,11 @@ pub async fn add_allocation(
         return Err(AppError::BadRequest(msg));
     }
     let mut tx = pool.begin().await?;
-    let capacity: Option<i32> = sqlx::query_scalar(
-        "SELECT capacity FROM hostel_rooms WHERE id = $1 FOR UPDATE",
-    )
-    .bind(room_id)
-    .fetch_optional(&mut *tx)
-    .await?;
+    let capacity: Option<i32> =
+        sqlx::query_scalar("SELECT capacity FROM hostel_rooms WHERE id = $1 FOR UPDATE")
+            .bind(room_id)
+            .fetch_optional(&mut *tx)
+            .await?;
     let capacity = capacity.ok_or(AppError::NotFound)?;
     let has_open: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM hostel_allocations WHERE student_id = $1 AND released_on IS NULL)",

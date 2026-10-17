@@ -68,7 +68,11 @@ pub struct EnrollmentCounts {
 // Pure helper
 // ---------------------------------------------------------------------------
 
-pub fn risk_reasons(fee_balance_gt_zero: bool, attendance_lt_80: bool, avg_grade_lt_50: bool) -> Vec<String> {
+pub fn risk_reasons(
+    fee_balance_gt_zero: bool,
+    attendance_lt_80: bool,
+    avg_grade_lt_50: bool,
+) -> Vec<String> {
     let mut out = Vec::new();
     if fee_balance_gt_zero {
         out.push("Fee balance outstanding".to_string());
@@ -166,20 +170,18 @@ pub async fn attendance_trend_14(pool: &PgPool) -> Result<Vec<AttendanceTrendRow
 }
 
 pub async fn fee_summary(pool: &PgPool) -> Result<FeeSummary, AppError> {
-    let billed: i64 = sqlx::query_scalar(
-        "SELECT COALESCE(SUM(amount_cents), 0)::BIGINT FROM invoices",
-    )
-    .fetch_one(pool)
-    .await?;
+    let billed: i64 =
+        sqlx::query_scalar("SELECT COALESCE(SUM(amount_cents), 0)::BIGINT FROM invoices")
+            .fetch_one(pool)
+            .await?;
     let fines: i64 =
         sqlx::query_scalar("SELECT COALESCE(SUM(amount_cents), 0)::BIGINT FROM fee_fines")
             .fetch_one(pool)
             .await?;
-    let paid: i64 = sqlx::query_scalar(
-        "SELECT COALESCE(SUM(amount_cents), 0)::BIGINT FROM payments",
-    )
-    .fetch_one(pool)
-    .await?;
+    let paid: i64 =
+        sqlx::query_scalar("SELECT COALESCE(SUM(amount_cents), 0)::BIGINT FROM payments")
+            .fetch_one(pool)
+            .await?;
     // Billed includes fines, matching the per-invoice balance definition
     // (amount + fines − paid) used by the fees module.
     let billed = billed + fines;
@@ -230,12 +232,14 @@ pub async fn grade_summary_rows(pool: &PgPool) -> Result<Vec<GradeSummary>, AppE
 }
 
 pub async fn enrollment_counts(pool: &PgPool) -> Result<EnrollmentCounts, AppError> {
-    let students: i64 = sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM students WHERE status = 'active'")
-        .fetch_one(pool)
-        .await?;
-    let staff: i64 = sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM staff WHERE status = 'active'")
-        .fetch_one(pool)
-        .await?;
+    let students: i64 =
+        sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM students WHERE status = 'active'")
+            .fetch_one(pool)
+            .await?;
+    let staff: i64 =
+        sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM staff WHERE status = 'active'")
+            .fetch_one(pool)
+            .await?;
     let classes: i64 = sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM classes")
         .fetch_one(pool)
         .await?;

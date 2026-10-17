@@ -1,9 +1,9 @@
 use axum::{
+    Router,
     extract::{Extension, Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Json},
     routing::get,
-    Router,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -68,7 +68,9 @@ async fn api_student(
     Path(id): Path<i64>,
 ) -> Result<impl IntoResponse, AppError> {
     require_api_role(&user)?;
-    let row = find_student(&state.pool, id).await?.ok_or(AppError::NotFound)?;
+    let row = find_student(&state.pool, id)
+        .await?
+        .ok_or(AppError::NotFound)?;
     let body = json!({
         "id": row.id,
         "admission_no": row.admission_no,
@@ -84,7 +86,10 @@ async fn api_classes(
 ) -> Result<impl IntoResponse, AppError> {
     require_api_role(&user)?;
     let opts = grade_model::list_class_options(&state.pool).await?;
-    let body: Vec<_> = opts.into_iter().map(|c| json!({"id": c.id, "name": c.name})).collect();
+    let body: Vec<_> = opts
+        .into_iter()
+        .map(|c| json!({"id": c.id, "name": c.name}))
+        .collect();
     Ok((StatusCode::OK, Json(json!(body))))
 }
 
@@ -101,7 +106,9 @@ async fn api_attendance(
 ) -> Result<impl IntoResponse, AppError> {
     require_api_role(&user)?;
     let class_id = params.class_id.unwrap_or(0);
-    let date_str = params.date.unwrap_or_else(|| chrono::Local::now().format("%Y-%m-%d").to_string());
+    let date_str = params
+        .date
+        .unwrap_or_else(|| chrono::Local::now().format("%Y-%m-%d").to_string());
     let date = chrono::NaiveDate::parse_from_str(&date_str, "%Y-%m-%d")
         .map_err(|_| AppError::BadRequest("bad date".to_string()))?;
     let roster = att_model::roster_for(&state.pool, class_id, date).await?;
@@ -156,7 +163,9 @@ async fn api_fees_outstanding(
     Extension(user): Extension<CurrentUser>,
 ) -> Result<impl IntoResponse, AppError> {
     require_api_role(&user)?;
-    let rows = fee_model::outstanding_invoices_filtered(&state.pool, "", None).await.unwrap_or_default();
+    let rows = fee_model::outstanding_invoices_filtered(&state.pool, "", None)
+        .await
+        .unwrap_or_default();
     let today = chrono::Local::now().date_naive();
     let body: Vec<_> = rows
         .iter()

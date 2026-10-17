@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Query, State},
     response::{IntoResponse, Redirect},
     routing::{get, post},
-    Router,
 };
 use chrono::NaiveDate;
 use serde::Deserialize;
@@ -142,12 +142,12 @@ async fn mark_page(
         .as_deref()
         .and_then(|s| s.trim().parse::<i64>().ok())
         .or_else(|| {
-        picker
-            .iter()
-            .find(|c| c.is_current)
-            .map(|c| c.id)
-            .or_else(|| picker.first().map(|c| c.id))
-    });
+            picker
+                .iter()
+                .find(|c| c.is_current)
+                .map(|c| c.id)
+                .or_else(|| picker.first().map(|c| c.id))
+        });
 
     let (roster, recent) = match selected_class {
         Some(id) => {
@@ -227,10 +227,7 @@ async fn save_submit(
     Extension(user): Extension<CurrentUser>,
     Form(form): Form<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, AppError> {
-    crate::auth::middleware::require_roles(
-        &user,
-        &[Role::Admin, Role::Teacher, Role::Staff],
-    )?;
+    crate::auth::middleware::require_roles(&user, &[Role::Admin, Role::Teacher, Role::Staff])?;
 
     let class_id: i64 = form
         .get("class_id")
@@ -258,17 +255,11 @@ async fn save_submit(
         Ok(()) => {
             // Best-effort: alert failures are logged inside, never fail the save.
             send_absence_alerts(&state, class_id, &date_str, &entries).await;
-            Ok(flash_redirect(
-                &back_to(class_id, &date_str),
-                "Saved",
-                "ok",
-            ))
+            Ok(flash_redirect(&back_to(class_id, &date_str), "Saved", "ok"))
         }
-        Err(AppError::BadRequest(msg)) => Ok(flash_redirect(
-            &back_to(class_id, &date_str),
-            &msg,
-            "error",
-        )),
+        Err(AppError::BadRequest(msg)) => {
+            Ok(flash_redirect(&back_to(class_id, &date_str), &msg, "error"))
+        }
         Err(e) => Err(e),
     }
 }
@@ -395,14 +386,13 @@ async fn alert_for_student(
         if parent.email.trim().is_empty() {
             continue;
         }
-        if let Err(e) = sqlx::query(
-            "INSERT INTO email_outbox (to_addr, subject, body) VALUES ($1, $2, $3)",
-        )
-        .bind(parent.email.trim())
-        .bind(absence_subject())
-        .bind(&body)
-        .execute(&state.pool)
-        .await
+        if let Err(e) =
+            sqlx::query("INSERT INTO email_outbox (to_addr, subject, body) VALUES ($1, $2, $3)")
+                .bind(parent.email.trim())
+                .bind(absence_subject())
+                .bind(&body)
+                .execute(&state.pool)
+                .await
         {
             tracing::warn!(error = %e, student_id, "absence alert: outbox insert failed");
         }
@@ -426,10 +416,7 @@ async fn clear_day_submit(
     Extension(user): Extension<CurrentUser>,
     Form(form): Form<ClearForm>,
 ) -> Result<impl IntoResponse, AppError> {
-    crate::auth::middleware::require_roles(
-        &user,
-        &[Role::Admin, Role::Teacher, Role::Staff],
-    )?;
+    crate::auth::middleware::require_roles(&user, &[Role::Admin, Role::Teacher, Role::Staff])?;
 
     let class_id: i64 = match form.class_id.trim().parse() {
         Ok(id) => id,

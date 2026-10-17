@@ -22,8 +22,7 @@ impl Config {
             database_url: get("DATABASE_URL")
                 .unwrap_or_else(|| "postgres://localhost/school".to_string()),
             bind_addr: get("BIND_ADDR").unwrap_or_else(|| "0.0.0.0:3000".to_string()),
-            admin_email: get("ADMIN_EMAIL")
-                .unwrap_or_else(|| "admin@example.com".to_string()),
+            admin_email: get("ADMIN_EMAIL").unwrap_or_else(|| "admin@example.com".to_string()),
             admin_password: get("ADMIN_PASSWORD")
                 .unwrap_or_else(|| "changeme-admin-123".to_string()),
             admin_name: get("ADMIN_NAME").unwrap_or_else(|| "Administrator".to_string()),
@@ -68,7 +67,10 @@ mod tests {
     #[test]
     fn honors_provided_values() {
         let vars = HashMap::from([
-            ("DATABASE_URL".to_string(), "postgres://db/school".to_string()),
+            (
+                "DATABASE_URL".to_string(),
+                "postgres://db/school".to_string(),
+            ),
             ("BIND_ADDR".to_string(), "127.0.0.1:4000".to_string()),
         ]);
         let cfg = Config::from_getter(&getter(&vars));

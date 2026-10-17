@@ -95,7 +95,9 @@ pub fn validate_staff(
         return Err(AppError::BadRequest("Last name is required".to_string()));
     }
     if employee_no.trim().is_empty() {
-        return Err(AppError::BadRequest("Employee number is required".to_string()));
+        return Err(AppError::BadRequest(
+            "Employee number is required".to_string(),
+        ));
     }
     if status != "active" && status != "inactive" {
         return Err(AppError::BadRequest(
@@ -141,7 +143,11 @@ pub async fn list_staff(pool: &PgPool) -> Result<Vec<StaffRow>, AppError> {
     list_staff_paged(pool, 200, 0).await
 }
 
-pub async fn list_staff_paged(pool: &PgPool, limit: i64, offset: i64) -> Result<Vec<StaffRow>, AppError> {
+pub async fn list_staff_paged(
+    pool: &PgPool,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<StaffRow>, AppError> {
     let rows = sqlx::query_as::<_, StaffRow>(
         "SELECT id, employee_no, first_name, last_name, email, phone, job_title, \
          department, hired_on, status FROM staff \
@@ -171,7 +177,12 @@ pub async fn search_staff(pool: &PgPool, q: &str) -> Result<Vec<StaffRow>, AppEr
     search_staff_paged(pool, q, 200, 0).await
 }
 
-pub async fn search_staff_paged(pool: &PgPool, q: &str, limit: i64, offset: i64) -> Result<Vec<StaffRow>, AppError> {
+pub async fn search_staff_paged(
+    pool: &PgPool,
+    q: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<StaffRow>, AppError> {
     let pattern = format!("%{}%", q.trim());
     let rows = sqlx::query_as::<_, StaffRow>(
         "SELECT id, employee_no, first_name, last_name, email, phone, job_title, \

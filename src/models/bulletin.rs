@@ -102,9 +102,7 @@ pub fn event_to_view(row: &EventRow) -> EventView {
         title: row.title.clone(),
         description: row.description.clone(),
         starts: row.starts_at.format("%-d %b %Y %H:%M").to_string(),
-        ends: row
-            .ends_at
-            .map(|e| e.format("%-d %b %Y %H:%M").to_string()),
+        ends: row.ends_at.map(|e| e.format("%-d %b %Y %H:%M").to_string()),
         location: row.location.clone(),
     }
 }

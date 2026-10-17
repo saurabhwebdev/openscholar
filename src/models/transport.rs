@@ -224,7 +224,11 @@ pub async fn create_vehicle_fields(
     create_vehicle(pool, &input).await
 }
 
-pub async fn update_vehicle(pool: &PgPool, id: i64, input: &VehicleInput) -> Result<VehicleRow, AppError> {
+pub async fn update_vehicle(
+    pool: &PgPool,
+    id: i64,
+    input: &VehicleInput,
+) -> Result<VehicleRow, AppError> {
     if let Err(msg) = validate_vehicle(&input.reg_no, input.capacity) {
         return Err(AppError::BadRequest(msg));
     }
@@ -252,12 +256,11 @@ pub async fn update_vehicle(pool: &PgPool, id: i64, input: &VehicleInput) -> Res
 
 pub async fn delete_vehicle(pool: &PgPool, id: i64) -> Result<(), AppError> {
     // blocked if referenced by routes
-    let refs: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*)::BIGINT FROM transport_routes WHERE vehicle_id = $1",
-    )
-    .bind(id)
-    .fetch_one(pool)
-    .await?;
+    let refs: i64 =
+        sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM transport_routes WHERE vehicle_id = $1")
+            .bind(id)
+            .fetch_one(pool)
+            .await?;
     if refs > 0 {
         return Err(AppError::BadRequest(
             "Cannot delete vehicle referenced by routes".to_string(),
@@ -353,7 +356,11 @@ pub async fn create_route_fields(
     create_route(pool, &input).await
 }
 
-pub async fn update_route(pool: &PgPool, id: i64, input: &RouteInput) -> Result<RouteRow, AppError> {
+pub async fn update_route(
+    pool: &PgPool,
+    id: i64,
+    input: &RouteInput,
+) -> Result<RouteRow, AppError> {
     if let Err(msg) = validate_route(&input.name) {
         return Err(AppError::BadRequest(msg));
     }
@@ -556,7 +563,9 @@ pub async fn add_rider(pool: &PgPool, input: &RiderInput) -> Result<RiderRow, Ap
     .fetch_one(&mut *tx)
     .await?;
     if dup {
-        return Err(AppError::BadRequest("Student already on this route".to_string()));
+        return Err(AppError::BadRequest(
+            "Student already on this route".to_string(),
+        ));
     }
 
     // Enforce vehicle capacity when a vehicle (with a capacity) is assigned.
@@ -607,10 +616,14 @@ pub async fn add_rider(pool: &PgPool, input: &RiderInput) -> Result<RiderRow, Ap
         Err(e) => {
             let app = AppError::Db(e);
             if is_duplicate_rider(&app) {
-                Err(AppError::BadRequest("Student already on this route".to_string()))
+                Err(AppError::BadRequest(
+                    "Student already on this route".to_string(),
+                ))
             } else if matches!(&app, AppError::Db(sqlx::Error::Database(db)) if db.code().as_deref() == Some("23503"))
             {
-                Err(AppError::BadRequest("Student or route not found".to_string()))
+                Err(AppError::BadRequest(
+                    "Student or route not found".to_string(),
+                ))
             } else {
                 Err(app)
             }
@@ -728,17 +741,19 @@ pub async fn routes_for_student(pool: &PgPool, student_id: i64) -> Result<Vec<Ro
     Ok(rows)
 }
 
-pub async fn routes_for_student_with_stop(pool: &PgPool, student_id: i64) -> Result<Vec<RouteRow>, AppError> {
+pub async fn routes_for_student_with_stop(
+    pool: &PgPool,
+    student_id: i64,
+) -> Result<Vec<RouteRow>, AppError> {
     routes_for_student(pool, student_id).await
 }
 
 pub async fn rider_count_for_route(pool: &PgPool, route_id: i64) -> Result<i64, AppError> {
-    let n: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*)::BIGINT FROM transport_riders WHERE route_id = $1",
-    )
-    .bind(route_id)
-    .fetch_one(pool)
-    .await?;
+    let n: i64 =
+        sqlx::query_scalar("SELECT COUNT(*)::BIGINT FROM transport_riders WHERE route_id = $1")
+            .bind(route_id)
+            .fetch_one(pool)
+            .await?;
     Ok(n)
 }
 
@@ -746,7 +761,10 @@ pub async fn count_riders(pool: &PgPool, route_id: i64) -> Result<i64, AppError>
     rider_count_for_route(pool, route_id).await
 }
 
-pub async fn vehicle_capacity_for_route(pool: &PgPool, route_id: i64) -> Result<Option<i32>, AppError> {
+pub async fn vehicle_capacity_for_route(
+    pool: &PgPool,
+    route_id: i64,
+) -> Result<Option<i32>, AppError> {
     let cap: Option<i32> = sqlx::query_scalar(
         "SELECT v.capacity FROM transport_routes tr LEFT JOIN vehicles v ON v.id = tr.vehicle_id WHERE tr.id = $1",
     )
@@ -759,7 +777,9 @@ pub async fn vehicle_capacity_for_route(pool: &PgPool, route_id: i64) -> Result<
 
 pub async fn capacity_check(pool: &PgPool, route_id: i64) -> Result<bool, AppError> {
     let riders = rider_count_for_route(pool, route_id).await?;
-    let cap = vehicle_capacity_for_route(pool, route_id).await?.unwrap_or(i32::MAX);
+    let cap = vehicle_capacity_for_route(pool, route_id)
+        .await?
+        .unwrap_or(i32::MAX);
     Ok(riders > cap as i64)
 }
 
@@ -769,7 +789,9 @@ pub async fn is_over_capacity(pool: &PgPool, route_id: i64) -> Result<bool, AppE
 
 pub async fn capacity_counts(pool: &PgPool, route_id: i64) -> Result<(i64, i32), AppError> {
     let riders = rider_count_for_route(pool, route_id).await?;
-    let cap = vehicle_capacity_for_route(pool, route_id).await?.unwrap_or(0);
+    let cap = vehicle_capacity_for_route(pool, route_id)
+        .await?
+        .unwrap_or(0);
     Ok((riders, cap))
 }
 

@@ -56,7 +56,12 @@ pub fn validate_setting(key: &str) -> Result<(), String> {
 }
 
 /// `name` non-empty; `min_score >= 0`; `max_score >= min_score`; `grade` non-empty.
-pub fn validate_scale(name: &str, min_score: f64, max_score: f64, grade: &str) -> Result<(), String> {
+pub fn validate_scale(
+    name: &str,
+    min_score: f64,
+    max_score: f64,
+    grade: &str,
+) -> Result<(), String> {
     if name.trim().is_empty() {
         return Err("Scale name is required".to_string());
     }
@@ -76,7 +81,11 @@ pub fn validate_scale(name: &str, min_score: f64, max_score: f64, grade: &str) -
 }
 
 /// `name` non-empty; `end_date >= start_date`.
-pub fn validate_semester(name: &str, start_date: NaiveDate, end_date: NaiveDate) -> Result<(), String> {
+pub fn validate_semester(
+    name: &str,
+    start_date: NaiveDate,
+    end_date: NaiveDate,
+) -> Result<(), String> {
     if name.trim().is_empty() {
         return Err("Semester name is required".to_string());
     }
@@ -87,9 +96,20 @@ pub fn validate_semester(name: &str, start_date: NaiveDate, end_date: NaiveDate)
 }
 
 // string-friendly helpers
-pub fn validate_scale_str(name: &str, min_score: &str, max_score: &str, grade: &str) -> Result<(), String> {
-    let min: f64 = min_score.trim().parse().map_err(|_| "Minimum score must be a number".to_string())?;
-    let max: f64 = max_score.trim().parse().map_err(|_| "Maximum score must be a number".to_string())?;
+pub fn validate_scale_str(
+    name: &str,
+    min_score: &str,
+    max_score: &str,
+    grade: &str,
+) -> Result<(), String> {
+    let min: f64 = min_score
+        .trim()
+        .parse()
+        .map_err(|_| "Minimum score must be a number".to_string())?;
+    let max: f64 = max_score
+        .trim()
+        .parse()
+        .map_err(|_| "Maximum score must be a number".to_string())?;
     validate_scale(name, min, max, grade)
 }
 
@@ -111,7 +131,11 @@ pub fn grade_for_score(scales: &[GradingScaleRow], score: f64) -> Option<String>
     scales
         .iter()
         .filter(|s| s.min_score <= score && score <= s.max_score)
-        .max_by(|a, b| a.min_score.partial_cmp(&b.min_score).unwrap_or(std::cmp::Ordering::Equal))
+        .max_by(|a, b| {
+            a.min_score
+                .partial_cmp(&b.min_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
         .map(|s| s.grade.clone())
 }
 
@@ -121,7 +145,11 @@ pub fn grade_points(scales: &[GradingScaleRow], score: f64) -> Option<f64> {
     scales
         .iter()
         .filter(|s| s.grade == grade && s.min_score <= score && score <= s.max_score)
-        .max_by(|a, b| a.min_score.partial_cmp(&b.min_score).unwrap_or(std::cmp::Ordering::Equal))
+        .max_by(|a, b| {
+            a.min_score
+                .partial_cmp(&b.min_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
         .and_then(|s| s.points)
 }
 
@@ -304,7 +332,10 @@ pub async fn remove_scale(pool: &PgPool, id: i64) -> Result<(), AppError> {
 // Semesters CRUD
 // ---------------------------------------------------------------------------
 
-pub async fn list_semesters(pool: &PgPool, school_year_id: i64) -> Result<Vec<SemesterRow>, AppError> {
+pub async fn list_semesters(
+    pool: &PgPool,
+    school_year_id: i64,
+) -> Result<Vec<SemesterRow>, AppError> {
     let rows = sqlx::query_as::<_, SemesterRow>(
         "SELECT id, school_year_id, name, start_date, end_date, is_current
          FROM semesters WHERE school_year_id = $1 ORDER BY start_date, name",
@@ -315,11 +346,17 @@ pub async fn list_semesters(pool: &PgPool, school_year_id: i64) -> Result<Vec<Se
     Ok(rows)
 }
 
-pub async fn list_semesters_by_year(pool: &PgPool, school_year_id: i64) -> Result<Vec<SemesterRow>, AppError> {
+pub async fn list_semesters_by_year(
+    pool: &PgPool,
+    school_year_id: i64,
+) -> Result<Vec<SemesterRow>, AppError> {
     list_semesters(pool, school_year_id).await
 }
 
-pub async fn semesters_for_year(pool: &PgPool, school_year_id: i64) -> Result<Vec<SemesterRow>, AppError> {
+pub async fn semesters_for_year(
+    pool: &PgPool,
+    school_year_id: i64,
+) -> Result<Vec<SemesterRow>, AppError> {
     list_semesters(pool, school_year_id).await
 }
 
@@ -479,9 +516,33 @@ mod tests {
     #[test]
     fn grade_for_score_picks_highest_min() {
         let scales = vec![
-            GradingScaleRow { id: 1, name: "S".into(), min_score: 0.0, max_score: 59.99, grade: "F".into(), points: Some(0.0), created_at: chrono::DateTime::<Utc>::from_timestamp(0,0).unwrap() },
-            GradingScaleRow { id: 2, name: "S".into(), min_score: 60.0, max_score: 74.99, grade: "C".into(), points: Some(2.0), created_at: chrono::DateTime::<Utc>::from_timestamp(0,0).unwrap() },
-            GradingScaleRow { id: 3, name: "S".into(), min_score: 75.0, max_score: 100.0, grade: "A".into(), points: Some(4.0), created_at: chrono::DateTime::<Utc>::from_timestamp(0,0).unwrap() },
+            GradingScaleRow {
+                id: 1,
+                name: "S".into(),
+                min_score: 0.0,
+                max_score: 59.99,
+                grade: "F".into(),
+                points: Some(0.0),
+                created_at: chrono::DateTime::<Utc>::from_timestamp(0, 0).unwrap(),
+            },
+            GradingScaleRow {
+                id: 2,
+                name: "S".into(),
+                min_score: 60.0,
+                max_score: 74.99,
+                grade: "C".into(),
+                points: Some(2.0),
+                created_at: chrono::DateTime::<Utc>::from_timestamp(0, 0).unwrap(),
+            },
+            GradingScaleRow {
+                id: 3,
+                name: "S".into(),
+                min_score: 75.0,
+                max_score: 100.0,
+                grade: "A".into(),
+                points: Some(4.0),
+                created_at: chrono::DateTime::<Utc>::from_timestamp(0, 0).unwrap(),
+            },
         ];
         assert_eq!(grade_for_score(&scales, 72.0), Some("C".to_string()));
         assert_eq!(grade_for_score(&scales, 90.0), Some("A".to_string()));

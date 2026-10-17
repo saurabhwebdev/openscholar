@@ -2,32 +2,31 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
+    Router,
     extract::{Extension, Form, Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
 };
 use chrono::NaiveDate;
 use serde::Deserialize;
 
 use crate::auth::middleware::require_roles;
 use crate::error::AppError;
-use crate::models::student::{
-    count_students, count_search_students,
-    create_student, find_student, is_duplicate_admission,
-    list_students_paged, search_students_paged,
-    update_student, validate_student, StudentInput, StudentView,
-};
-use crate::pagination::{PageItem, Paginated, DEFAULT_PER_PAGE};
-use crate::models::library::{open_loans_for_student, LoanView};
-use crate::models::transport as transport_model;
-use crate::models::welfare as welfare_model;
-use crate::models::attachment as attachment_model;
-use crate::models::hostel as hostel_model;
 use crate::models::activity as activity_model;
-use crate::models::lesson as lesson_model;
+use crate::models::attachment as attachment_model;
 use crate::models::audit as audit_model;
+use crate::models::hostel as hostel_model;
+use crate::models::lesson as lesson_model;
+use crate::models::library::{LoanView, open_loans_for_student};
+use crate::models::student::{
+    StudentInput, StudentView, count_search_students, count_students, create_student, find_student,
+    is_duplicate_admission, list_students_paged, search_students_paged, update_student,
+    validate_student,
+};
+use crate::models::transport as transport_model;
 use crate::models::user::{CurrentUser, Role};
+use crate::models::welfare as welfare_model;
+use crate::pagination::{DEFAULT_PER_PAGE, PageItem, Paginated};
 use crate::state::AppState;
 use crate::util;
 
@@ -99,7 +98,11 @@ async fn list(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, AppError> {
     let q = params.get("q").cloned().unwrap_or_default();
-    let page: i64 = params.get("page").and_then(|p| p.parse().ok()).unwrap_or(1).max(1);
+    let page: i64 = params
+        .get("page")
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(1)
+        .max(1);
     let per_page = DEFAULT_PER_PAGE;
     let offset = (page - 1) * per_page;
     let (total, rows) = if q.trim().is_empty() {
@@ -111,7 +114,12 @@ async fn list(
         let rows = search_students_paged(&state.pool, &q, per_page, offset).await?;
         (total, rows)
     };
-    let paginated: Paginated<()> = Paginated { items: vec![], page, per_page, total };
+    let paginated: Paginated<()> = Paginated {
+        items: vec![],
+        page,
+        per_page,
+        total,
+    };
     let base_url = if q.trim().is_empty() {
         "/students?".to_string()
     } else {
@@ -316,12 +324,23 @@ async fn create(
     require_roles(&user, &[Role::Admin, Role::Staff])?;
     let input = match input_from_form(&form) {
         Ok(input) => input,
-        Err(AppError::BadRequest(msg)) => return Ok(back_to_form("/students/new", &msg).into_response()),
+        Err(AppError::BadRequest(msg)) => {
+            return Ok(back_to_form("/students/new", &msg).into_response());
+        }
         Err(e) => return Err(e),
     };
     match create_student(&state.pool, &input).await {
         Ok(row) => {
-            if let Err(e) = audit_model::log_action(&state.pool, Some(user.id), "create", "student", Some(row.id), Some("student created")).await {
+            if let Err(e) = audit_model::log_action(
+                &state.pool,
+                Some(user.id),
+                "create",
+                "student",
+                Some(row.id),
+                Some("student created"),
+            )
+            .await
+            {
                 tracing::warn!(error = %e, "audit log failed");
             }
             Ok(Redirect::to(&format!("/students/{}", row.id)).into_response())
@@ -437,14 +456,18 @@ async fn detail(
     .bind(id)
     .fetch_optional(&state.pool)
     .await?;
-    let open_loans = open_loans_for_student(&state.pool, id).await.unwrap_or_default();
+    let open_loans = open_loans_for_student(&state.pool, id)
+        .await
+        .unwrap_or_default();
     let transport_routes = transport_model::routes_for_student(&state.pool, id)
         .await
         .unwrap_or_default();
     let hostel_allocation = hostel_model::open_allocation_for_student(&state.pool, id)
         .await
         .unwrap_or(None);
-    let wsummary = welfare_model::incident_summary(&state.pool, id).await.unwrap_or_default();
+    let wsummary = welfare_model::incident_summary(&state.pool, id)
+        .await
+        .unwrap_or_default();
     let attachments = attachment_model::list_for(&state.pool, "student", id)
         .await
         .unwrap_or_default()
@@ -550,16 +573,23 @@ async fn update(
     };
     match update_student(&state.pool, id, &input).await {
         Ok(row) => {
-            if let Err(e) = audit_model::log_action(&state.pool, Some(user.id), "update", "student", Some(row.id), Some("student updated")).await {
+            if let Err(e) = audit_model::log_action(
+                &state.pool,
+                Some(user.id),
+                "update",
+                "student",
+                Some(row.id),
+                Some("student updated"),
+            )
+            .await
+            {
                 tracing::warn!(error = %e, "audit log failed");
             }
             Ok(Redirect::to(&format!("/students/{id}")).into_response())
         }
-        Err(e) if is_duplicate_admission(&e) => Ok(back_to_form(
-            &edit_url,
-            "That admission number is already taken",
-        )
-        .into_response()),
+        Err(e) if is_duplicate_admission(&e) => {
+            Ok(back_to_form(&edit_url, "That admission number is already taken").into_response())
+        }
         Err(e) => Err(e),
     }
 }
@@ -625,7 +655,16 @@ async fn delete_student(
     if done.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
-    if let Err(e) = audit_model::log_action(&state.pool, Some(user.id), "delete", "student", Some(id), Some("student deleted")).await {
+    if let Err(e) = audit_model::log_action(
+        &state.pool,
+        Some(user.id),
+        "delete",
+        "student",
+        Some(id),
+        Some("student deleted"),
+    )
+    .await
+    {
         tracing::warn!(error = %e, "audit log failed");
     }
     Ok(Redirect::to(&delete_success_target()).into_response())

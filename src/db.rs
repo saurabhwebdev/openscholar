@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
 
 pub async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
     connect_with(database_url, 10).await
